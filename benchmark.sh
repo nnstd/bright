@@ -83,7 +83,8 @@ test_indexing() {
             -H 'Content-Type: application/json' \
             --data-binary @$data_file > /dev/null 2>&1")
     else
-        # Meilisearch
+        # Meilisearch - async indexing, need to wait for task completion
+        echo -e "${BLUE}Creating Meilisearch index: $index_name${NC}" >&2
         curl -s -X POST "$url/indexes" \
             -H "Content-Type: application/json" \
             -d '{"uid": "'"$index_name"'", "primaryKey": "id"}' > /dev/null
@@ -92,9 +93,32 @@ test_indexing() {
         local temp_file=$(mktemp)
         jq -s '.' < "$data_file" > "$temp_file"
         
-        time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents' \
-            -H 'Content-Type: application/json' \
-            --data-binary @$temp_file > /dev/null 2>&1")
+        # Start timing
+        local start=$(date +%s%N)
+        
+        # Submit documents and get task UID
+        local task_response=$(curl -s -X POST "$url/indexes/$index_name/documents" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$temp_file")
+        
+        local task_uid=$(echo "$task_response" | jq -r '.taskUid')
+        echo -e "${BLUE}Meilisearch task UID: $task_uid${NC}" >&2
+        
+        # Poll task status until completed
+        local task_status="enqueued"
+        while [ "$task_status" != "succeeded" ] && [ "$task_status" != "failed" ]; do
+            sleep 0.1
+            local task_info=$(curl -s "$url/tasks/$task_uid")
+            task_status=$(echo "$task_info" | jq -r '.status')
+            echo -e "${BLUE}Task status: $task_status${NC}" >&2
+        done
+        
+        local end=$(date +%s%N)
+        time=$(( (end - start) / 1000000 ))
+        
+        if [ "$task_status" = "failed" ]; then
+            echo -e "${YELLOW}Warning: Meilisearch indexing task failed${NC}" >&2
+        fi
         
         rm -f "$temp_file"
     fi
