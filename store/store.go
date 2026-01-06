@@ -47,6 +47,11 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 		return fmt.Errorf("index %s already exists", config.ID)
 	}
 
+	// Ensure data directory exists
+	if err := os.MkdirAll(s.dataDir, 0755); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
+
 	indexPath := filepath.Join(s.dataDir, config.ID)
 
 	// Create index mapping

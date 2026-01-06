@@ -48,17 +48,13 @@ if [ ! -f "$MEILISEARCH_BIN" ]; then
     chmod +x "$MEILISEARCH_BIN"
 fi
 
-# Generate test data if not present
+# Generate test data
 echo -e "${BLUE}Generating test data...${NC}"
 go run benchmarks/generate_data.go
 
 # Build Bright
 echo -e "${BLUE}Building Bright...${NC}"
 go build -o "$BRIGHT_BIN" .
-
-# Generate test data
-echo -e "${BLUE}Generating test data...${NC}"
-go run benchmarks/generate_data.go
 
 # Function to measure time
 measure_time() {
@@ -91,6 +87,9 @@ test_indexing() {
         echo -e "${BLUE}Creating Bright index: $index_name${NC}" >&2
         local response=$(curl -s -X POST "$url/indexes?id=$index_name&primaryKey=id")
         echo -e "${BLUE}Response: $response${NC}" >&2
+        
+        # Wait a moment for index to be fully initialized
+        sleep 0.5
         
         # Debug: Show curl command
         echo -e "${YELLOW}DEBUG: curl -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' --data-binary @$data_file${NC}" >&2
