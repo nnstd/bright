@@ -23,9 +23,17 @@ echo -e "${BLUE}=== Benchmark: Bright vs Meilisearch ===${NC}"
 # Clean up function
 cleanup() {
     echo -e "${YELLOW}Cleaning up...${NC}"
-    pkill -f meilisearch || true
-    pkill -f search-db || true
-    sleep 2
+    # Kill our specific processes if they're still running
+    if [ ! -z "$BRIGHT_PID" ] && kill -0 "$BRIGHT_PID" 2>/dev/null; then
+        kill "$BRIGHT_PID" 2>/dev/null || true
+    fi
+    if [ ! -z "$MEILI_PID" ] && kill -0 "$MEILI_PID" 2>/dev/null; then
+        kill "$MEILI_PID" 2>/dev/null || true
+    fi
+    # Cleanup any leftover processes (only user's processes, ignore errors)
+    pkill -u "$USER" -f meilisearch 2>/dev/null || true
+    pkill -u "$USER" -f search-db 2>/dev/null || true
+    sleep 1
 }
 
 trap cleanup EXIT
