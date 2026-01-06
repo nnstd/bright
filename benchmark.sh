@@ -66,9 +66,9 @@ test_indexing() {
     
     if [ "$engine" = "bright" ]; then
         # Create index (Bright uses query parameters)
-        echo -e "${BLUE}Creating Bright index: $index_name${NC}"
+        echo -e "${BLUE}Creating Bright index: $index_name${NC}" >&2
         local response=$(curl -s -X POST "$url/indexes?id=$index_name&primaryKey=id")
-        echo -e "${BLUE}Response: $response${NC}"
+        echo -e "${BLUE}Response: $response${NC}" >&2
         
         # Index documents
         time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' \
@@ -189,11 +189,17 @@ kill $MEILI_PID
 echo -e "${BLUE}=== Results ===${NC}"
 RESULT_FILE="$RESULTS_DIR/benchmark_${TIMESTAMP}.json"
 
-# Calculate averages
-BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
-MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
+# Calculate averages (ensure variables are numeric)
+BRIGHT_SEARCH_1=${BRIGHT_SEARCH_1//[^0-9]/}
+BRIGHT_SEARCH_2=${BRIGHT_SEARCH_2//[^0-9]/}
+BRIGHT_SEARCH_3=${BRIGHT_SEARCH_3//[^0-9]/}
+MEILI_SEARCH_1=${MEILI_SEARCH_1//[^0-9]/}
+MEILI_SEARCH_2=${MEILI_SEARCH_2//[^0-9]/}
+MEILI_SEARCH_3=${MEILI_SEARCH_3//[^0-9]/}
+BRIGHT_INDEX_TIME=${BRIGHT_INDEX_TIME//[^0-9]/}
+MEILI_INDEX_TIME=${MEILI_INDEX_TIME//[^0-9]/}
 
-# Ensure all values are valid numbers, default to 0 if empty
+# Set defaults for empty values
 BRIGHT_INDEX_TIME=${BRIGHT_INDEX_TIME:-0}
 BRIGHT_SEARCH_1=${BRIGHT_SEARCH_1:-0}
 BRIGHT_SEARCH_2=${BRIGHT_SEARCH_2:-0}
@@ -202,6 +208,9 @@ MEILI_INDEX_TIME=${MEILI_INDEX_TIME:-0}
 MEILI_SEARCH_1=${MEILI_SEARCH_1:-0}
 MEILI_SEARCH_2=${MEILI_SEARCH_2:-0}
 MEILI_SEARCH_3=${MEILI_SEARCH_3:-0}
+
+BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
+MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
 
 cat > "$RESULT_FILE" <<EOF
 {
