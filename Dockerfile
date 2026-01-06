@@ -9,8 +9,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o search-db .
+# Build argument for version
+ARG VERSION=dev
+
+# Build the application with version
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags "-X main.Version=${VERSION}" -o search-db .
 
 # Final stage
 FROM alpine:latest

@@ -4,8 +4,11 @@ import (
 	"bright/config"
 	"bright/handlers"
 	middleware "bright/middlewares"
+	"fmt"
 	"log"
+	"os"
 
+	"github.com/alecthomas/kong"
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +17,17 @@ import (
 	"go.uber.org/zap"
 )
 
-func main() {
+// Version is set via ldflags during build
+var Version = "dev"
+
+var CLI struct {
+	Serve   ServeCmd   `cmd:"" help:"Start the Bright server" default:"1"`
+	Version VersionCmd `cmd:"" help:"Show version information"`
+}
+
+type ServeCmd struct{}
+
+func (s *ServeCmd) Run() error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -38,8 +51,19 @@ func main() {
 		zap.Bool("auth_enabled", cfg.RequiresAuth()),
 	)
 
+	return startServer(cfg, zapLogger)
+}
+
+type VersionCmd struct{}
+
+func (v *VersionCmd) Run() error {
+	fmt.Printf("Bright %s\n", Version)
+	return nil
+}
+
+func startServer(cfg *config.Config, zapLogger *zap.Logger) error {
 	app := fiber.New(fiber.Config{
-		AppName: "Bright",
+		DisableStartupMessage: false,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
@@ -97,5 +121,20 @@ func main() {
 	zapLogger.Info("Server starting", zap.String("address", ":"+cfg.Port))
 	if err := app.Listen(":" + cfg.Port); err != nil {
 		zapLogger.Fatal("Failed to start server", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func main() {
+	ctx := kong.Parse(&CLI,
+		kong.Name("bright"),
+		kong.Description("A blazing fast full-text search server"),
+		kong.UsageOnError(),
+	)
+	err := ctx.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 }
