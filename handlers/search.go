@@ -1,0 +1,162 @@
+package handlers
+
+import (
+	"bright/models"
+	"bright/store"
+	"fmt"
+	"math"
+	"strings"
+
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
+	"github.com/gofiber/fiber/v2"
+)
+
+// Search handles POST /indexes/:id/searches
+func Search(c *fiber.Ctx) error {
+	indexID := c.Params("id")
+
+	// Parse query parameters using struct
+	var params struct {
+		Q                    string   `query:"q"`
+		Offset               int      `query:"offset"`
+		Limit                int      `query:"limit"`
+		Page                 int      `query:"page"`
+		Sort                 []string `query:"sort[]"`
+		AttributesToRetrieve []string `query:"attributesToRetrieve[]"`
+		AttributesToExclude  []string `query:"attributesToExclude[]"`
+	}
+
+	// Set defaults
+	params.Limit = 20
+	params.Page = 1
+
+	if err := c.QueryParser(&params); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("invalid query parameters: %v", err),
+		})
+	}
+
+	queryStr := params.Q
+	offset := params.Offset
+	limit := params.Limit
+	sortFields := params.Sort
+	page := params.Page
+	attributesToRetrieve := params.AttributesToRetrieve
+	attributesToExclude := params.AttributesToExclude
+
+	// Validate that both attributesToRetrieve and attributesToExclude are not provided
+	if len(attributesToRetrieve) > 0 && len(attributesToExclude) > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "cannot use both attributesToRetrieve and attributesToExclude at the same time",
+		})
+	}
+
+	// Calculate offset from page if page is provided
+	if page > 1 {
+		offset = (page - 1) * limit
+	}
+
+	s := store.GetStore()
+	index, _, err := s.GetIndex(indexID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Create search query
+	var searchQuery query.Query
+	if queryStr == "" {
+		searchQuery = bleve.NewMatchAllQuery()
+	} else {
+		searchQuery = bleve.NewQueryStringQuery(queryStr)
+	}
+
+	searchRequest := bleve.NewSearchRequest(searchQuery)
+	searchRequest.From = offset
+	searchRequest.Size = limit
+	searchRequest.Fields = []string{"*"} // Retrieve all fields
+
+	// Apply sorting if provided
+	if len(sortFields) > 0 {
+		sortOrder := make([]string, 0, len(sortFields))
+		for _, sortField := range sortFields {
+			sortField = strings.TrimSpace(sortField)
+			if sortField != "" {
+				// Check if field has descending order (starts with -)
+				if strings.HasPrefix(sortField, "-") {
+					// Descending order
+					fieldName := strings.TrimPrefix(sortField, "-")
+					sortOrder = append(sortOrder, "-"+fieldName)
+				} else {
+					// Ascending order (default)
+					sortOrder = append(sortOrder, sortField)
+				}
+			}
+		}
+
+		if len(sortOrder) > 0 {
+			searchRequest.SortBy(sortOrder)
+		}
+	} else {
+		// Default sorting by score (relevance)
+		searchRequest.SortBy([]string{"-_score"})
+	}
+
+	// rchRequest.Fields = []string{"*"} // Retrieve all fields
+
+	// Execute search
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("search failed: %v", err),
+		})
+	}
+
+	// Process results
+	hits := make([]map[string]interface{}, 0, len(searchResult.Hits))
+	for _, hit := range searchResult.Hits {
+		doc := make(map[string]interface{})
+
+		// Add all fields from the hit
+		for fieldName, fieldValue := range hit.Fields {
+			doc[fieldName] = fieldValue
+		}
+
+		// Add the document ID
+		if _, ok := doc["id"]; !ok {
+			doc["id"] = hit.ID
+		}
+
+		// Filter attributes: use either attributesToRetrieve OR attributesToExclude
+		if len(attributesToRetrieve) > 0 {
+			// If attributesToRetrieve is specified, only include those attributes
+			filteredDoc := make(map[string]interface{})
+			for _, attr := range attributesToRetrieve {
+				if val, ok := doc[attr]; ok {
+					filteredDoc[attr] = val
+				}
+			}
+			doc = filteredDoc
+		} else if len(attributesToExclude) > 0 {
+			// Otherwise, if attributesToExclude is specified, exclude those attributes
+			for _, attr := range attributesToExclude {
+				delete(doc, attr)
+			}
+		}
+
+		hits = append(hits, doc)
+	}
+
+	// Calculate total pages
+	totalPages := int(math.Ceil(float64(searchResult.Total) / float64(limit)))
+
+	response := models.SearchResponse{
+		Hits:       hits,
+		TotalHits:  searchResult.Total,
+		TotalPages: totalPages,
+	}
+
+	return c.JSON(response)
+}
