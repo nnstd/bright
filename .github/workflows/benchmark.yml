@@ -24,8 +24,11 @@ jobs:
       - name: Install dependencies
         run: |
           go mod download
-          sudo apt-get update
-          sudo apt-get install -y jq
+          # Install jq if not already present
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update || true
+            sudo apt-get install -y jq || sudo snap install jq || echo "jq installation failed, using alternative JSON parsing"
+          fi
       
       - name: Make benchmark script executable
         run: chmod +x benchmark.sh
