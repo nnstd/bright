@@ -163,24 +163,24 @@ jobs:
             const m5kSearch = '${{ steps.results.outputs.meili_5k_search }}';
             const m10kSearch = '${{ steps.results.outputs.meili_10k_search }}';
             
-            const comment = \`**Benchmark Results** (vs Meilisearch v1.31.0)
+            const comment = `**Benchmark Results** (vs Meilisearch v1.31.0)
             
             **Indexing Performance**
             
             | Dataset Size | Bright | Meilisearch | Winner |
             |-------------|--------|-------------|---------|
-            | 1,000 docs | \${b1kIdx}ms | \${m1kIdx}ms | \${b1kIdx < m1kIdx ? 'Bright' : 'Meilisearch'} |
-            | 5,000 docs | \${b5kIdx}ms | \${m5kIdx}ms | \${b5kIdx < m5kIdx ? 'Bright' : 'Meilisearch'} |
-            | 10,000 docs | \${b10kIdx}ms | \${m10kIdx}ms | \${b10kIdx < m10kIdx ? 'Bright' : 'Meilisearch'} |
+            | 1,000 docs | ${b1kIdx}ms | ${m1kIdx}ms | ${b1kIdx < m1kIdx ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | ${b5kIdx}ms | ${m5kIdx}ms | ${b5kIdx < m5kIdx ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | ${b10kIdx}ms | ${m10kIdx}ms | ${b10kIdx < m10kIdx ? 'Bright' : 'Meilisearch'} |
             
             **Search Performance (avg)**
             
             | Dataset Size | Bright | Meilisearch | Winner |
             |-------------|--------|-------------|---------|
-            | 1,000 docs | \${b1kSearch}ms | \${m1kSearch}ms | \${b1kSearch < m1kSearch ? 'Bright' : 'Meilisearch'} |
-            | 5,000 docs | \${b5kSearch}ms | \${m5kSearch}ms | \${b5kSearch < m5kSearch ? 'Bright' : 'Meilisearch'} |
-            | 10,000 docs | \${b10kSearch}ms | \${m10kSearch}ms | \${b10kSearch < m10kSearch ? 'Bright' : 'Meilisearch'} |
-            \`;
+            | 1,000 docs | ${b1kSearch}ms | ${m1kSearch}ms | ${b1kSearch < m1kSearch ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | ${b5kSearch}ms | ${m5kSearch}ms | ${b5kSearch < m5kSearch ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | ${b10kSearch}ms | ${m10kSearch}ms | ${b10kSearch < m10kSearch ? 'Bright' : 'Meilisearch'} |
+            `;
             
             github.rest.repos.createCommitComment({
               owner: context.repo.owner,
