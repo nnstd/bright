@@ -100,7 +100,7 @@ test_search() {
     local query=$4
     
     if [ "$engine" = "bright" ]; then
-        local time=$(measure_time "curl -s '$url/indexes/$index_name/searches?q=$query' > /dev/null")
+        local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/searches?q=$query' > /dev/null")
     else
         local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/search' \
             -H 'Content-Type: application/json' \
@@ -115,6 +115,16 @@ echo -e "${BLUE}Starting Bright...${NC}"
 "$BRIGHT_BIN" &
 BRIGHT_PID=$!
 sleep 3
+
+# Wait for Bright to be ready
+for i in {1..10}; do
+    if curl -s "$BRIGHT_URL/indexes" > /dev/null 2>&1; then
+        echo -e "${GREEN}Bright is ready${NC}"
+        break
+    fi
+    echo "Waiting for Bright to start..."
+    sleep 1
+done
 
 # Run Bright benchmarks
 echo -e "${GREEN}=== Benchmarking Bright ===${NC}"
@@ -140,6 +150,16 @@ echo -e "${BLUE}Starting Meilisearch...${NC}"
 "$MEILISEARCH_BIN" --no-analytics &
 MEILI_PID=$!
 sleep 5
+
+# Wait for Meilisearch to be ready
+for i in {1..10}; do
+    if curl -s "$MEILI_URL/health" > /dev/null 2>&1; then
+        echo -e "${GREEN}Meilisearch is ready${NC}"
+        break
+    fi
+    echo "Waiting for Meilisearch to start..."
+    sleep 1
+done
 
 # Run Meilisearch benchmarks
 echo -e "${GREEN}=== Benchmarking Meilisearch ===${NC}"
