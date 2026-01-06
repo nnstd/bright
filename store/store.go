@@ -24,9 +24,24 @@ type IndexStore struct {
 var store *IndexStore
 var once sync.Once
 
+// Initialize initializes the store with the specified data directory
+// Must be called before GetStore() if you want to use a custom data directory
+func Initialize(dataDir string) {
+	once.Do(func() {
+		store = &IndexStore{
+			indexes:    make(map[string]bleve.Index),
+			configs:    make(map[string]*models.IndexConfig),
+			dataDir:    dataDir,
+			configFile: filepath.Join(dataDir, "configs.json"),
+		}
+		store.loadConfigs()
+	})
+}
+
 // GetStore returns the singleton instance of IndexStore
 func GetStore() *IndexStore {
 	once.Do(func() {
+		// Default initialization if Initialize was not called
 		store = &IndexStore{
 			indexes:    make(map[string]bleve.Index),
 			configs:    make(map[string]*models.IndexConfig),

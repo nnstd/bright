@@ -4,6 +4,7 @@ import (
 	"bright/config"
 	"bright/handlers"
 	middleware "bright/middlewares"
+	"bright/store"
 	"fmt"
 	"log"
 	"os"
@@ -62,7 +63,11 @@ func (s *ServeCmd) Run() error {
 	zapLogger.Info("Starting Bright",
 		zap.String("port", cfg.Port),
 		zap.Bool("auth_enabled", cfg.RequiresAuth()),
+		zap.String("data_path", cfg.DataPath),
 	)
+
+	// Initialize store with configured data path
+	store.Initialize(cfg.DataPath)
 
 	return startServer(cfg, zapLogger)
 }
