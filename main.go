@@ -6,6 +6,7 @@ import (
 	middleware "bright/middlewares"
 	"log"
 
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -61,6 +62,13 @@ func main() {
 	// Middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
+
+	// Prometheus metrics (before auth to allow scraping without authentication)
+	prometheus := fiberprometheus.New("bright")
+	prometheus.RegisterAt(app, "/metrics")
+	app.Use(prometheus.Middleware)
+
+	// Authentication middleware
 	app.Use(middleware.Authorization(cfg, zapLogger))
 
 	// Health check route
