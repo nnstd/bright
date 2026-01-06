@@ -7,6 +7,7 @@ require (
 	github.com/bytedance/sonic v1.14.2
 	github.com/gofiber/fiber/v2 v2.52.0
 	github.com/google/uuid v1.6.0
+	github.com/hashicorp/go-msgpack v0.5.5
 )
 
 require (

@@ -1,14 +1,11 @@
 package handlers
 
 import (
+	"bright/formats"
 	"bright/store"
-	"bufio"
-	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/blevesearch/bleve/v2"
-	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -28,27 +25,19 @@ func AddDocuments(c *fiber.Ctx) error {
 
 	body := c.Body()
 
-	var documents []map[string]interface{}
-
-	if format == "jsoneachrow" {
-		scanner := bufio.NewScanner(bytes.NewReader(body))
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.TrimSpace(line) == "" {
-				continue
-			}
-
-			var doc map[string]interface{}
-			if err := sonic.Unmarshal([]byte(line), &doc); err != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": fmt.Sprintf("invalid JSON: %v", err),
-				})
-			}
-			documents = append(documents, doc)
-		}
-	} else {
+	// Get the appropriate parser for the format
+	parser, err := formats.GetParser(format)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "unsupported format",
+			"error": err.Error(),
+		})
+	}
+
+	// Parse documents using the format parser
+	documents, err := parser.Parse(body)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("parse error: %v", err),
 		})
 	}
 
