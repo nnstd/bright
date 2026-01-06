@@ -8,6 +8,25 @@ import (
 	"github.com/gofiber/fiber/v2/utils"
 )
 
+// ListIndexes handles GET /indexes
+func ListIndexes(c *fiber.Ctx) error {
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
+	page := c.QueryInt("page", 0)
+
+	// If page is provided, calculate offset from page
+	if page > 0 {
+		offset = (page - 1) * limit
+	}
+
+	s := store.GetStore()
+	items := s.ListIndexes(limit, offset)
+
+	return c.JSON(fiber.Map{
+		"items": items,
+	})
+}
+
 // CreateIndex handles POST /indexes
 func CreateIndex(c *fiber.Ctx) error {
 	id := c.Query("id")

@@ -67,6 +67,7 @@ func main() {
 	indexes := app.Group("/indexes")
 	{
 		// Index management
+		indexes.Get("/", handlers.ListIndexes)
 		indexes.Post("/", handlers.CreateIndex)
 		indexes.Delete("/:id", handlers.DeleteIndex)
 		indexes.Patch("/:id", handlers.UpdateIndex)

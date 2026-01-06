@@ -126,6 +126,31 @@ func (s *IndexStore) UpdateIndex(id string, config *models.IndexConfig) error {
 	return nil
 }
 
+// ListIndexes returns all index configurations with pagination
+func (s *IndexStore) ListIndexes(limit, offset int) []*models.IndexConfig {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Convert map to slice
+	allConfigs := make([]*models.IndexConfig, 0, len(s.configs))
+	for _, config := range s.configs {
+		allConfigs = append(allConfigs, config)
+	}
+
+	// Apply pagination
+	start := offset
+	if start > len(allConfigs) {
+		return []*models.IndexConfig{}
+	}
+
+	end := start + limit
+	if end > len(allConfigs) {
+		end = len(allConfigs)
+	}
+
+	return allConfigs[start:end]
+}
+
 // loadConfigs loads index configurations from disk
 func (s *IndexStore) loadConfigs() {
 	// Create data directory if it doesn't exist
