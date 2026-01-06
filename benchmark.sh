@@ -118,8 +118,12 @@ sleep 3
 
 # Wait for Bright to be ready
 for i in {1..10}; do
-    if curl -s "$BRIGHT_URL/indexes" > /dev/null 2>&1; then
+    if curl -s -X POST "$BRIGHT_URL/indexes" \
+        -H "Content-Type: application/json" \
+        -d '{"id": "test", "primaryKey": "id"}' > /dev/null 2>&1; then
         echo -e "${GREEN}Bright is ready${NC}"
+        # Delete test index
+        curl -s -X DELETE "$BRIGHT_URL/indexes/test" > /dev/null 2>&1
         break
     fi
     echo "Waiting for Bright to start..."
@@ -226,7 +230,7 @@ printf "%-20s %-15s %-15s %-15s\n" "Metric" "Bright" "Meilisearch" "Winner"
 printf "%-20s %-15s %-15s %-15s\n" "--------------------" "---------------" "---------------" "---------------"
 
 # Indexing comparison
-if [ $BRIGHT_INDEX_TIME -lt $MEILI_INDEX_TIME ]; then
+if [ "$BRIGHT_INDEX_TIME" -lt "$MEILI_INDEX_TIME" ]; then
     WINNER="Bright"
 else
     WINNER="Meilisearch"
@@ -237,7 +241,7 @@ printf "%-20s %-15s %-15s %-15s\n" "Indexing (ms)" "$BRIGHT_INDEX_TIME" "$MEILI_
 BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
 MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
 
-if [ $BRIGHT_AVG -lt $MEILI_AVG ]; then
+if [ "$BRIGHT_AVG" -lt "$MEILI_AVG" ]; then
     WINNER="Bright"
 else
     WINNER="Meilisearch"
