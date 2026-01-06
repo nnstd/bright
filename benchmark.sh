@@ -76,16 +76,34 @@ test_indexing() {
     local data_file=$4
     local time
     
+    # Debug: Check if data file exists
+    if [ ! -f "$data_file" ]; then
+        echo -e "${YELLOW}WARNING: Data file does not exist: $data_file${NC}" >&2
+        echo "0"
+        return
+    fi
+    
+    local file_size=$(wc -c < "$data_file" | tr -d ' ')
+    echo -e "${BLUE}Data file: $data_file (size: $file_size bytes)${NC}" >&2
+    
     if [ "$engine" = "bright" ]; then
         # Create index (Bright uses query parameters)
         echo -e "${BLUE}Creating Bright index: $index_name${NC}" >&2
         local response=$(curl -s -X POST "$url/indexes?id=$index_name&primaryKey=id")
         echo -e "${BLUE}Response: $response${NC}" >&2
         
-        # Index documents
-        time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' \
+        # Debug: Show curl command
+        echo -e "${YELLOW}DEBUG: curl -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' --data-binary @$data_file${NC}" >&2
+        
+        # Index documents and capture response
+        local start=$(date +%s%N)
+        local upload_response=$(curl -s -X POST "$url/indexes/$index_name/documents?format=jsoneachrow" \
             -H 'Content-Type: application/json' \
-            --data-binary @$data_file > /dev/null 2>&1")
+            --data-binary @"$data_file")
+        local end=$(date +%s%N)
+        time=$(( (end - start) / 1000000 ))
+        
+        echo -e "${YELLOW}DEBUG: Upload response: $upload_response${NC}" >&2
     else
         # Meilisearch - async indexing, need to wait for task completion
         echo -e "${BLUE}Creating Meilisearch index: $index_name${NC}" >&2
@@ -137,7 +155,10 @@ test_search() {
     local index_name=$3
     local query=$4
     
+    echo -e "${YELLOW}DEBUG: Searching in $engine - index: $index_name, query: $query${NC}" >&2
+    
     if [ "$engine" = "bright" ]; then
+        echo -e "${YELLOW}DEBUG: curl -X POST '$url/indexes/$index_name/searches?q=$query'${NC}" >&2
         local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/searches?q=$query' > /dev/null")
     else
         local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/search' \
