@@ -173,22 +173,22 @@ echo -e "${GREEN}=== Benchmarking Bright ===${NC}"
 for size in 1000 5000 10000; do
     echo -e "${YELLOW}Testing with $size documents...${NC}"
     
-    local index_name="products_$size"
-    local data_file="benchmarks/test_data_${size}.jsonl"
+    index_name="products_$size"
+    data_file="benchmarks/test_data_${size}.jsonl"
     
     # Test indexing
     echo -e "${YELLOW}Testing indexing for Bright...${NC}" >&2
-    local index_time=$(test_indexing "bright" "$BRIGHT_URL" "$index_name" "$data_file")
+    index_time=$(test_indexing "bright" "$BRIGHT_URL" "$index_name" "$data_file")
     BRIGHT_INDEX_TIMES[$size]=$index_time
     echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
     
     sleep 2
     
     # Test search
-    local search1=$(test_search "bright" "$BRIGHT_URL" "$index_name" "laptop")
-    local search2=$(test_search "bright" "$BRIGHT_URL" "$index_name" "computer")
-    local search3=$(test_search "bright" "$BRIGHT_URL" "$index_name" "price:>100")
-    local avg_search=$(( (search1 + search2 + search3) / 3 ))
+    search1=$(test_search "bright" "$BRIGHT_URL" "$index_name" "laptop")
+    search2=$(test_search "bright" "$BRIGHT_URL" "$index_name" "computer")
+    search3=$(test_search "bright" "$BRIGHT_URL" "$index_name" "price:>100")
+    avg_search=$(( (search1 + search2 + search3) / 3 ))
     BRIGHT_SEARCH_TIMES[$size]=$avg_search
     
     echo -e "Avg search time: ${GREEN}${avg_search}ms${NC}"
@@ -223,22 +223,22 @@ echo -e "${GREEN}=== Benchmarking Meilisearch ===${NC}"
 for size in 1000 5000 10000; do
     echo -e "${YELLOW}Testing with $size documents...${NC}"
     
-    local index_name="products_$size"
-    local data_file="benchmarks/test_data_${size}.jsonl"
+    index_name="products_$size"
+    data_file="benchmarks/test_data_${size}.jsonl"
     
     # Test indexing
     echo -e "${YELLOW}Testing indexing for Meilisearch...${NC}" >&2
-    local index_time=$(test_indexing "meilisearch" "$MEILI_URL" "$index_name" "$data_file")
+    index_time=$(test_indexing "meilisearch" "$MEILI_URL" "$index_name" "$data_file")
     MEILI_INDEX_TIMES[$size]=$index_time
     echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
     
     sleep 2
     
     # Test search
-    local search1=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "laptop")
-    local search2=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "computer")
-    local search3=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "price")
-    local avg_search=$(( (search1 + search2 + search3) / 3 ))
+    search1=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "laptop")
+    search2=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "computer")
+    search3=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "price")
+    avg_search=$(( (search1 + search2 + search3) / 3 ))
     MEILI_SEARCH_TIMES[$size]=$avg_search
     
     echo -e "Avg search time: ${GREEN}${avg_search}ms${NC}"
