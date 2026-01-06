@@ -65,12 +65,9 @@ test_indexing() {
     local time
     
     if [ "$engine" = "bright" ]; then
-        # Create index
-        local index_json='{"id": "'"$index_name"'", "primaryKey": "id"}'
-        echo -e "${BLUE}Creating Bright index with: $index_json${NC}"
-        local response=$(curl -s -X POST "$url/indexes" \
-            -H "Content-Type: application/json" \
-            -d "$index_json")
+        # Create index (Bright uses query parameters)
+        echo -e "${BLUE}Creating Bright index: $index_name${NC}"
+        local response=$(curl -s -X POST "$url/indexes?id=$index_name&primaryKey=id")
         echo -e "${BLUE}Response: $response${NC}"
         
         # Index documents
@@ -123,9 +120,7 @@ sleep 3
 
 # Wait for Bright to be ready
 for i in {1..10}; do
-    if curl -s -X POST "$BRIGHT_URL/indexes" \
-        -H "Content-Type: application/json" \
-        -d '{"id": "test", "primaryKey": "id"}' > /dev/null 2>&1; then
+    if curl -s -X POST "$BRIGHT_URL/indexes?id=test&primaryKey=id" > /dev/null 2>&1; then
         echo -e "${GREEN}Bright is ready${NC}"
         # Delete test index
         curl -s -X DELETE "$BRIGHT_URL/indexes/test" > /dev/null 2>&1
