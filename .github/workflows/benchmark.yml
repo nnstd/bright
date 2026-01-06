@@ -49,60 +49,80 @@ jobs:
           # Get the latest result file
           RESULT_FILE=$(ls -t benchmark_results/*.json | head -1)
           
-          # Extract metrics
-          BRIGHT_INDEX=$(jq -r '.bright.indexing_ms' $RESULT_FILE)
-          BRIGHT_SEARCH=$(jq -r '.bright.avg_search_ms' $RESULT_FILE)
-          MEILI_INDEX=$(jq -r '.meilisearch.indexing_ms' $RESULT_FILE)
-          MEILI_SEARCH=$(jq -r '.meilisearch.avg_search_ms' $RESULT_FILE)
+          # Extract metrics for all dataset sizes
+          BRIGHT_1K_IDX=$(jq -r '.results."1000".bright.indexing_ms' $RESULT_FILE)
+          BRIGHT_1K_SEARCH=$(jq -r '.results."1000".bright.search_ms' $RESULT_FILE)
+          MEILI_1K_IDX=$(jq -r '.results."1000".meilisearch.indexing_ms' $RESULT_FILE)
+          MEILI_1K_SEARCH=$(jq -r '.results."1000".meilisearch.search_ms' $RESULT_FILE)
+          
+          BRIGHT_5K_IDX=$(jq -r '.results."5000".bright.indexing_ms' $RESULT_FILE)
+          BRIGHT_5K_SEARCH=$(jq -r '.results."5000".bright.search_ms' $RESULT_FILE)
+          MEILI_5K_IDX=$(jq -r '.results."5000".meilisearch.indexing_ms' $RESULT_FILE)
+          MEILI_5K_SEARCH=$(jq -r '.results."5000".meilisearch.search_ms' $RESULT_FILE)
+          
+          BRIGHT_10K_IDX=$(jq -r '.results."10000".bright.indexing_ms' $RESULT_FILE)
+          BRIGHT_10K_SEARCH=$(jq -r '.results."10000".bright.search_ms' $RESULT_FILE)
+          MEILI_10K_IDX=$(jq -r '.results."10000".meilisearch.indexing_ms' $RESULT_FILE)
+          MEILI_10K_SEARCH=$(jq -r '.results."10000".meilisearch.search_ms' $RESULT_FILE)
           
           # Set outputs
-          echo "bright_index=$BRIGHT_INDEX" >> $GITHUB_OUTPUT
-          echo "bright_search=$BRIGHT_SEARCH" >> $GITHUB_OUTPUT
-          echo "meili_index=$MEILI_INDEX" >> $GITHUB_OUTPUT
-          echo "meili_search=$MEILI_SEARCH" >> $GITHUB_OUTPUT
+          echo "bright_1k_idx=$BRIGHT_1K_IDX" >> $GITHUB_OUTPUT
+          echo "bright_1k_search=$BRIGHT_1K_SEARCH" >> $GITHUB_OUTPUT
+          echo "meili_1k_idx=$MEILI_1K_IDX" >> $GITHUB_OUTPUT
+          echo "meili_1k_search=$MEILI_1K_SEARCH" >> $GITHUB_OUTPUT
           
-          # Calculate percentages
-          if [ $BRIGHT_INDEX -lt $MEILI_INDEX ]; then
-            INDEX_DIFF=$(( (MEILI_INDEX - BRIGHT_INDEX) * 100 / MEILI_INDEX ))
-            echo "index_winner=Bright ($INDEX_DIFF% faster)" >> $GITHUB_OUTPUT
-          else
-            INDEX_DIFF=$(( (BRIGHT_INDEX - MEILI_INDEX) * 100 / BRIGHT_INDEX ))
-            echo "index_winner=Meilisearch ($INDEX_DIFF% faster)" >> $GITHUB_OUTPUT
-          fi
+          echo "bright_5k_idx=$BRIGHT_5K_IDX" >> $GITHUB_OUTPUT
+          echo "bright_5k_search=$BRIGHT_5K_SEARCH" >> $GITHUB_OUTPUT
+          echo "meili_5k_idx=$MEILI_5K_IDX" >> $GITHUB_OUTPUT
+          echo "meili_5k_search=$MEILI_5K_SEARCH" >> $GITHUB_OUTPUT
           
-          if [ $BRIGHT_SEARCH -lt $MEILI_SEARCH ]; then
-            SEARCH_DIFF=$(( (MEILI_SEARCH - BRIGHT_SEARCH) * 100 / MEILI_SEARCH ))
-            echo "search_winner=Bright ($SEARCH_DIFF% faster)" >> $GITHUB_OUTPUT
-          else
-            SEARCH_DIFF=$(( (BRIGHT_SEARCH - MEILI_SEARCH) * 100 / BRIGHT_SEARCH ))
-            echo "search_winner=Meilisearch ($SEARCH_DIFF% faster)" >> $GITHUB_OUTPUT
-          fi
+          echo "bright_10k_idx=$BRIGHT_10K_IDX" >> $GITHUB_OUTPUT
+          echo "bright_10k_search=$BRIGHT_10K_SEARCH" >> $GITHUB_OUTPUT
+          echo "meili_10k_idx=$MEILI_10K_IDX" >> $GITHUB_OUTPUT
+          echo "meili_10k_search=$MEILI_10K_SEARCH" >> $GITHUB_OUTPUT
       
       - name: Create benchmark comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const brightIndex = '${{ steps.results.outputs.bright_index }}';
-            const brightSearch = '${{ steps.results.outputs.bright_search }}';
-            const meiliIndex = '${{ steps.results.outputs.meili_index }}';
-            const meiliSearch = '${{ steps.results.outputs.meili_search }}';
-            const indexWinner = '${{ steps.results.outputs.index_winner }}';
-            const searchWinner = '${{ steps.results.outputs.search_winner }}';
+            const b1kIdx = '${{ steps.results.outputs.bright_1k_idx }}';
+            const b5kIdx = '${{ steps.results.outputs.bright_5k_idx }}';
+            const b10kIdx = '${{ steps.results.outputs.bright_10k_idx }}';
+            const m1kIdx = '${{ steps.results.outputs.meili_1k_idx }}';
+            const m5kIdx = '${{ steps.results.outputs.meili_5k_idx }}';
+            const m10kIdx = '${{ steps.results.outputs.meili_10k_idx }}';
+            
+            const b1kSearch = '${{ steps.results.outputs.bright_1k_search }}';
+            const b5kSearch = '${{ steps.results.outputs.bright_5k_search }}';
+            const b10kSearch = '${{ steps.results.outputs.bright_10k_search }}';
+            const m1kSearch = '${{ steps.results.outputs.meili_1k_search }}';
+            const m5kSearch = '${{ steps.results.outputs.meili_5k_search }}';
+            const m10kSearch = '${{ steps.results.outputs.meili_10k_search }}';
             
             const comment = `## Performance Benchmark Results
             
-            | Metric | Bright | Meilisearch | Winner |
-            |--------|--------|-------------|--------|
-            | **Indexing** | ${brightIndex}ms | ${meiliIndex}ms | ${indexWinner} |
-            | **Avg Search** | ${brightSearch}ms | ${meiliSearch}ms | ${searchWinner} |
+            ### Indexing Performance
+            
+            | Dataset Size | Bright | Meilisearch | Winner |
+            |-------------|--------|-------------|---------|
+            | 1,000 docs | ${b1kIdx}ms | ${m1kIdx}ms | ${b1kIdx < m1kIdx ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | ${b5kIdx}ms | ${m5kIdx}ms | ${b5kIdx < m5kIdx ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | ${b10kIdx}ms | ${m10kIdx}ms | ${b10kIdx < m10kIdx ? 'Bright' : 'Meilisearch'} |
+            
+            ### Search Performance (avg)
+            
+            | Dataset Size | Bright | Meilisearch | Winner |
+            |-------------|--------|-------------|---------|
+            | 1,000 docs | ${b1kSearch}ms | ${m1kSearch}ms | ${b1kSearch < m1kSearch ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | ${b5kSearch}ms | ${m5kSearch}ms | ${b5kSearch < m5kSearch ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | ${b10kSearch}ms | ${m10kSearch}ms | ${b10kSearch < m10kSearch ? 'Bright' : 'Meilisearch'} |
             
             <details>
             <summary>Test Configuration</summary>
             
-            - **Dataset**: 1,000 product documents
             - **Search Queries**: laptop, computer, complex filter
-            - **Platform**: Linux AMD64
+            - **Platform**: Linux AMD64 (self-hosted)
             - **Meilisearch Version**: v1.31.0
             
             </details>
@@ -129,16 +149,38 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const brightIndex = '${{ steps.results.outputs.bright_index }}';
-            const brightSearch = '${{ steps.results.outputs.bright_search }}';
-            const meiliIndex = '${{ steps.results.outputs.meili_index }}';
-            const meiliSearch = '${{ steps.results.outputs.meili_search }}';
-            const indexWinner = '${{ steps.results.outputs.index_winner }}';
-            const searchWinner = '${{ steps.results.outputs.search_winner }}';
+            const b1kIdx = '${{ steps.results.outputs.bright_1k_idx }}';
+            const b5kIdx = '${{ steps.results.outputs.bright_5k_idx }}';
+            const b10kIdx = '${{ steps.results.outputs.bright_10k_idx }}';
+            const m1kIdx = '${{ steps.results.outputs.meili_1k_idx }}';
+            const m5kIdx = '${{ steps.results.outputs.meili_5k_idx }}';
+            const m10kIdx = '${{ steps.results.outputs.meili_10k_idx }}';
             
-            const comment = `**Benchmark Results** (vs Meilisearch v1.31.0)
-            - Indexing: Bright ${brightIndex}ms vs Meili ${meiliIndex}ms - ${indexWinner}
-            - Search: Bright ${brightSearch}ms vs Meili ${meiliSearch}ms - ${searchWinner}`;
+            const b1kSearch = '${{ steps.results.outputs.bright_1k_search }}';
+            const b5kSearch = '${{ steps.results.outputs.bright_5k_search }}';
+            const b10kSearch = '${{ steps.results.outputs.bright_10k_search }}';
+            const m1kSearch = '${{ steps.results.outputs.meili_1k_search }}';
+            const m5kSearch = '${{ steps.results.outputs.meili_5k_search }}';
+            const m10kSearch = '${{ steps.results.outputs.meili_10k_search }}';
+            
+            const comment = \`**Benchmark Results** (vs Meilisearch v1.31.0)
+            
+            **Indexing Performance**
+            
+            | Dataset Size | Bright | Meilisearch | Winner |
+            |-------------|--------|-------------|---------|
+            | 1,000 docs | \${b1kIdx}ms | \${m1kIdx}ms | \${b1kIdx < m1kIdx ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | \${b5kIdx}ms | \${m5kIdx}ms | \${b5kIdx < m5kIdx ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | \${b10kIdx}ms | \${m10kIdx}ms | \${b10kIdx < m10kIdx ? 'Bright' : 'Meilisearch'} |
+            
+            **Search Performance (avg)**
+            
+            | Dataset Size | Bright | Meilisearch | Winner |
+            |-------------|--------|-------------|---------|
+            | 1,000 docs | \${b1kSearch}ms | \${m1kSearch}ms | \${b1kSearch < m1kSearch ? 'Bright' : 'Meilisearch'} |
+            | 5,000 docs | \${b5kSearch}ms | \${m5kSearch}ms | \${b5kSearch < m5kSearch ? 'Bright' : 'Meilisearch'} |
+            | 10,000 docs | \${b10kSearch}ms | \${m10kSearch}ms | \${b10kSearch < m10kSearch ? 'Bright' : 'Meilisearch'} |
+            \`;
             
             github.rest.repos.createCommitComment({
               owner: context.repo.owner,

@@ -162,21 +162,41 @@ for i in {1..10}; do
     sleep 1
 done
 
-# Run Bright benchmarks
+# Arrays to store results by dataset size
+declare -A BRIGHT_INDEX_TIMES
+declare -A BRIGHT_SEARCH_TIMES
+declare -A MEILI_INDEX_TIMES
+declare -A MEILI_SEARCH_TIMES
+
+# Run Bright benchmarks for different dataset sizes
 echo -e "${GREEN}=== Benchmarking Bright ===${NC}"
-echo -e "${YELLOW}Testing indexing for Bright...${NC}"
-BRIGHT_INDEX_TIME=$(test_indexing "bright" "$BRIGHT_URL" "products" "benchmarks/test_data.jsonl")
-echo -e "Indexing time: ${GREEN}${BRIGHT_INDEX_TIME}ms${NC}"
-
-sleep 2
-
-BRIGHT_SEARCH_1=$(test_search "bright" "$BRIGHT_URL" "products" "laptop")
-BRIGHT_SEARCH_2=$(test_search "bright" "$BRIGHT_URL" "products" "computer")
-BRIGHT_SEARCH_3=$(test_search "bright" "$BRIGHT_URL" "products" "price:>100")
-
-echo -e "Search 'laptop': ${GREEN}${BRIGHT_SEARCH_1}ms${NC}"
-echo -e "Search 'computer': ${GREEN}${BRIGHT_SEARCH_2}ms${NC}"
-echo -e "Search 'price:>100': ${GREEN}${BRIGHT_SEARCH_3}ms${NC}"
+for size in 1000 5000 10000; do
+    echo -e "${YELLOW}Testing with $size documents...${NC}"
+    
+    local index_name="products_$size"
+    local data_file="benchmarks/test_data_${size}.jsonl"
+    
+    # Test indexing
+    echo -e "${YELLOW}Testing indexing for Bright...${NC}" >&2
+    local index_time=$(test_indexing "bright" "$BRIGHT_URL" "$index_name" "$data_file")
+    BRIGHT_INDEX_TIMES[$size]=$index_time
+    echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
+    
+    sleep 2
+    
+    # Test search
+    local search1=$(test_search "bright" "$BRIGHT_URL" "$index_name" "laptop")
+    local search2=$(test_search "bright" "$BRIGHT_URL" "$index_name" "computer")
+    local search3=$(test_search "bright" "$BRIGHT_URL" "$index_name" "price:>100")
+    local avg_search=$(( (search1 + search2 + search3) / 3 ))
+    BRIGHT_SEARCH_TIMES[$size]=$avg_search
+    
+    echo -e "Avg search time: ${GREEN}${avg_search}ms${NC}"
+    
+    # Cleanup index
+    curl -s -X DELETE "$BRIGHT_URL/indexes/$index_name" > /dev/null 2>&1
+    sleep 1
+done
 
 # Stop Bright
 kill $BRIGHT_PID
@@ -198,21 +218,33 @@ for i in {1..10}; do
     sleep 1
 done
 
-# Run Meilisearch benchmarks
+# Run Meilisearch benchmarks for different dataset sizes
 echo -e "${GREEN}=== Benchmarking Meilisearch ===${NC}"
-echo -e "${YELLOW}Testing indexing for Meilisearch...${NC}"
-MEILI_INDEX_TIME=$(test_indexing "meilisearch" "$MEILI_URL" "products" "benchmarks/test_data.jsonl")
-echo -e "Indexing time: ${GREEN}${MEILI_INDEX_TIME}ms${NC}"
-
-sleep 2
-
-MEILI_SEARCH_1=$(test_search "meilisearch" "$MEILI_URL" "products" "laptop")
-MEILI_SEARCH_2=$(test_search "meilisearch" "$MEILI_URL" "products" "computer")
-MEILI_SEARCH_3=$(test_search "meilisearch" "$MEILI_URL" "products" "price")
-
-echo -e "Search 'laptop': ${GREEN}${MEILI_SEARCH_1}ms${NC}"
-echo -e "Search 'computer': ${GREEN}${MEILI_SEARCH_2}ms${NC}"
-echo -e "Search 'price': ${GREEN}${MEILI_SEARCH_3}ms${NC}"
+for size in 1000 5000 10000; do
+    echo -e "${YELLOW}Testing with $size documents...${NC}"
+    
+    local index_name="products_$size"
+    local data_file="benchmarks/test_data_${size}.jsonl"
+    
+    # Test indexing
+    echo -e "${YELLOW}Testing indexing for Meilisearch...${NC}" >&2
+    local index_time=$(test_indexing "meilisearch" "$MEILI_URL" "$index_name" "$data_file")
+    MEILI_INDEX_TIMES[$size]=$index_time
+    echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
+    
+    sleep 2
+    
+    # Test search
+    local search1=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "laptop")
+    local search2=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "computer")
+    local search3=$(test_search "meilisearch" "$MEILI_URL" "$index_name" "price")
+    local avg_search=$(( (search1 + search2 + search3) / 3 ))
+    MEILI_SEARCH_TIMES[$size]=$avg_search
+    
+    echo -e "Avg search time: ${GREEN}${avg_search}ms${NC}"
+    
+    sleep 1
+done
 
 # Stop Meilisearch
 kill $MEILI_PID
@@ -221,75 +253,86 @@ kill $MEILI_PID
 echo -e "${BLUE}=== Results ===${NC}"
 RESULT_FILE="$RESULTS_DIR/benchmark_${TIMESTAMP}.json"
 
-# Calculate averages (ensure variables are numeric)
-BRIGHT_SEARCH_1=${BRIGHT_SEARCH_1//[^0-9]/}
-BRIGHT_SEARCH_2=${BRIGHT_SEARCH_2//[^0-9]/}
-BRIGHT_SEARCH_3=${BRIGHT_SEARCH_3//[^0-9]/}
-MEILI_SEARCH_1=${MEILI_SEARCH_1//[^0-9]/}
-MEILI_SEARCH_2=${MEILI_SEARCH_2//[^0-9]/}
-MEILI_SEARCH_3=${MEILI_SEARCH_3//[^0-9]/}
-BRIGHT_INDEX_TIME=${BRIGHT_INDEX_TIME//[^0-9]/}
-MEILI_INDEX_TIME=${MEILI_INDEX_TIME//[^0-9]/}
-
-# Set defaults for empty values
-BRIGHT_INDEX_TIME=${BRIGHT_INDEX_TIME:-0}
-BRIGHT_SEARCH_1=${BRIGHT_SEARCH_1:-0}
-BRIGHT_SEARCH_2=${BRIGHT_SEARCH_2:-0}
-BRIGHT_SEARCH_3=${BRIGHT_SEARCH_3:-0}
-MEILI_INDEX_TIME=${MEILI_INDEX_TIME:-0}
-MEILI_SEARCH_1=${MEILI_SEARCH_1:-0}
-MEILI_SEARCH_2=${MEILI_SEARCH_2:-0}
-MEILI_SEARCH_3=${MEILI_SEARCH_3:-0}
-
-BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
-MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
-
+# Build JSON for all dataset sizes
 cat > "$RESULT_FILE" <<EOF
 {
   "timestamp": "$TIMESTAMP",
-  "bright": {
-    "indexing_ms": $BRIGHT_INDEX_TIME,
-    "search_laptop_ms": $BRIGHT_SEARCH_1,
-    "search_computer_ms": $BRIGHT_SEARCH_2,
-    "search_complex_ms": $BRIGHT_SEARCH_3,
-    "avg_search_ms": $BRIGHT_AVG
-  },
-  "meilisearch": {
-    "indexing_ms": $MEILI_INDEX_TIME,
-    "search_laptop_ms": $MEILI_SEARCH_1,
-    "search_computer_ms": $MEILI_SEARCH_2,
-    "search_complex_ms": $MEILI_SEARCH_3,
-    "avg_search_ms": $MEILI_AVG
+  "results": {
+    "1000": {
+      "bright": {
+        "indexing_ms": ${BRIGHT_INDEX_TIMES[1000]:-0},
+        "search_ms": ${BRIGHT_SEARCH_TIMES[1000]:-0}
+      },
+      "meilisearch": {
+        "indexing_ms": ${MEILI_INDEX_TIMES[1000]:-0},
+        "search_ms": ${MEILI_SEARCH_TIMES[1000]:-0}
+      }
+    },
+    "5000": {
+      "bright": {
+        "indexing_ms": ${BRIGHT_INDEX_TIMES[5000]:-0},
+        "search_ms": ${BRIGHT_SEARCH_TIMES[5000]:-0}
+      },
+      "meilisearch": {
+        "indexing_ms": ${MEILI_INDEX_TIMES[5000]:-0},
+        "search_ms": ${MEILI_SEARCH_TIMES[5000]:-0}
+      }
+    },
+    "10000": {
+      "bright": {
+        "indexing_ms": ${BRIGHT_INDEX_TIMES[10000]:-0},
+        "search_ms": ${BRIGHT_SEARCH_TIMES[10000]:-0}
+      },
+      "meilisearch": {
+        "indexing_ms": ${MEILI_INDEX_TIMES[10000]:-0},
+        "search_ms": ${MEILI_SEARCH_TIMES[10000]:-0}
+      }
+    }
   }
 }
 EOF
 
 echo -e "${GREEN}Results saved to: $RESULT_FILE${NC}"
 
-# Display comparison
+# Display comparison table
 echo ""
-echo -e "${BLUE}=== Comparison ===${NC}"
-printf "%-20s %-15s %-15s %-15s\n" "Metric" "Bright" "Meilisearch" "Winner"
-printf "%-20s %-15s %-15s %-15s\n" "--------------------" "---------------" "---------------" "---------------"
+echo -e "${BLUE}=== Performance Comparison ===${NC}"
+printf "%-15s %-20s %-20s %-20s\n" "Dataset Size" "Bright Index (ms)" "Meili Index (ms)" "Winner"
+printf "%-15s %-20s %-20s %-20s\n" "---------------" "--------------------" "--------------------" "--------------------"
 
-# Indexing comparison
-if [ "$BRIGHT_INDEX_TIME" -lt "$MEILI_INDEX_TIME" ]; then
-    WINNER="Bright"
-else
-    WINNER="Meilisearch"
-fi
-printf "%-20s %-15s %-15s %-15s\n" "Indexing (ms)" "$BRIGHT_INDEX_TIME" "$MEILI_INDEX_TIME" "$WINNER"
+for size in 1000 5000 10000; do
+    local bright_idx="${BRIGHT_INDEX_TIMES[$size]:-0}"
+    local meili_idx="${MEILI_INDEX_TIMES[$size]:-0}"
+    
+    if [ "$bright_idx" -lt "$meili_idx" ]; then
+        local diff=$(( (meili_idx - bright_idx) * 100 / meili_idx ))
+        local winner="Bright ($diff% faster)"
+    else
+        local diff=$(( (bright_idx - meili_idx) * 100 / bright_idx ))
+        local winner="Meilisearch ($diff% faster)"
+    fi
+    
+    printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_idx" "$meili_idx" "$winner"
+done
 
-# Average search comparison
-BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
-MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
+echo ""
+printf "%-15s %-20s %-20s %-20s\n" "Dataset Size" "Bright Search (ms)" "Meili Search (ms)" "Winner"
+printf "%-15s %-20s %-20s %-20s\n" "---------------" "--------------------" "--------------------" "--------------------"
 
-if [ "$BRIGHT_AVG" -lt "$MEILI_AVG" ]; then
-    WINNER="Bright"
-else
-    WINNER="Meilisearch"
-fi
-printf "%-20s %-15s %-15s %-15s\n" "Avg Search (ms)" "$BRIGHT_AVG" "$MEILI_AVG" "$WINNER"
+for size in 1000 5000 10000; do
+    local bright_search="${BRIGHT_SEARCH_TIMES[$size]:-0}"
+    local meili_search="${MEILI_SEARCH_TIMES[$size]:-0}"
+    
+    if [ "$bright_search" -lt "$meili_search" ]; then
+        local diff=$(( (meili_search - bright_search) * 100 / meili_search ))
+        local winner="Bright ($diff% faster)"
+    else
+        local diff=$(( (bright_search - meili_search) * 100 / bright_search ))
+        local winner="Meilisearch ($diff% faster)"
+    fi
+    
+    printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_search" "$meili_search" "$winner"
+done
 
 echo ""
 echo -e "${GREEN}Benchmark complete!${NC}"
