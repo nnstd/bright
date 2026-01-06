@@ -56,6 +56,18 @@ go run benchmarks/generate_data.go
 echo -e "${BLUE}Building Bright...${NC}"
 go build -o "$BRIGHT_BIN" .
 
+# Function to get memory usage in MB
+get_memory_usage() {
+    local pid=$1
+    # Get RSS (Resident Set Size) in KB and convert to MB
+    local mem_kb=$(ps -o rss= -p "$pid" 2>/dev/null | tr -d ' ')
+    if [ -z "$mem_kb" ]; then
+        echo "0"
+    else
+        echo $(( mem_kb / 1024 ))
+    fi
+}
+
 # Function to measure time
 measure_time() {
     local start=$(date +%s%N)
@@ -176,8 +188,10 @@ done
 # Arrays to store results by dataset size
 declare -A BRIGHT_INDEX_TIMES
 declare -A BRIGHT_SEARCH_TIMES
+declare -A BRIGHT_MEMORY
 declare -A MEILI_INDEX_TIMES
 declare -A MEILI_SEARCH_TIMES
+declare -A MEILI_MEMORY
 
 # Run Bright benchmarks for different dataset sizes
 echo -e "${GREEN}=== Benchmarking Bright ===${NC}"
@@ -192,6 +206,11 @@ for size in 1000 5000 10000; do
     index_time=$(test_indexing "bright" "$BRIGHT_URL" "$index_name" "$data_file")
     BRIGHT_INDEX_TIMES[$size]=$index_time
     echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
+    
+    # Measure memory after indexing
+    memory=$(get_memory_usage "$BRIGHT_PID")
+    BRIGHT_MEMORY[$size]=$memory
+    echo -e "Memory usage: ${GREEN}${memory}MB${NC}"
     
     sleep 2
     
@@ -243,6 +262,11 @@ for size in 1000 5000 10000; do
     MEILI_INDEX_TIMES[$size]=$index_time
     echo -e "Indexing time: ${GREEN}${index_time}ms${NC}"
     
+    # Measure memory after indexing
+    memory=$(get_memory_usage "$MEILI_PID")
+    MEILI_MEMORY[$size]=$memory
+    echo -e "Memory usage: ${GREEN}${memory}MB${NC}"
+    
     sleep 2
     
     # Test search
@@ -272,31 +296,37 @@ cat > "$RESULT_FILE" <<EOF
     "1000": {
       "bright": {
         "indexing_ms": ${BRIGHT_INDEX_TIMES[1000]:-0},
-        "search_ms": ${BRIGHT_SEARCH_TIMES[1000]:-0}
+        "search_ms": ${BRIGHT_SEARCH_TIMES[1000]:-0},
+        "memory_mb": ${BRIGHT_MEMORY[1000]:-0}
       },
       "meilisearch": {
         "indexing_ms": ${MEILI_INDEX_TIMES[1000]:-0},
-        "search_ms": ${MEILI_SEARCH_TIMES[1000]:-0}
+        "search_ms": ${MEILI_SEARCH_TIMES[1000]:-0},
+        "memory_mb": ${MEILI_MEMORY[1000]:-0}
       }
     },
     "5000": {
       "bright": {
         "indexing_ms": ${BRIGHT_INDEX_TIMES[5000]:-0},
-        "search_ms": ${BRIGHT_SEARCH_TIMES[5000]:-0}
+        "search_ms": ${BRIGHT_SEARCH_TIMES[5000]:-0},
+        "memory_mb": ${BRIGHT_MEMORY[5000]:-0}
       },
       "meilisearch": {
         "indexing_ms": ${MEILI_INDEX_TIMES[5000]:-0},
-        "search_ms": ${MEILI_SEARCH_TIMES[5000]:-0}
+        "search_ms": ${MEILI_SEARCH_TIMES[5000]:-0},
+        "memory_mb": ${MEILI_MEMORY[5000]:-0}
       }
     },
     "10000": {
       "bright": {
         "indexing_ms": ${BRIGHT_INDEX_TIMES[10000]:-0},
-        "search_ms": ${BRIGHT_SEARCH_TIMES[10000]:-0}
+        "search_ms": ${BRIGHT_SEARCH_TIMES[10000]:-0},
+        "memory_mb": ${BRIGHT_MEMORY[10000]:-0}
       },
       "meilisearch": {
         "indexing_ms": ${MEILI_INDEX_TIMES[10000]:-0},
-        "search_ms": ${MEILI_SEARCH_TIMES[10000]:-0}
+        "search_ms": ${MEILI_SEARCH_TIMES[10000]:-0},
+        "memory_mb": ${MEILI_MEMORY[10000]:-0}
       }
     }
   }
@@ -343,6 +373,25 @@ for size in 1000 5000 10000; do
     fi
     
     printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_search" "$meili_search" "$winner"
+done
+
+echo ""
+printf "%-15s %-20s %-20s %-20s\n" "Dataset Size" "Bright Memory (MB)" "Meili Memory (MB)" "Winner"
+printf "%-15s %-20s %-20s %-20s\n" "---------------" "--------------------" "--------------------" "--------------------"
+
+for size in 1000 5000 10000; do
+    bright_mem="${BRIGHT_MEMORY[$size]:-0}"
+    meili_mem="${MEILI_MEMORY[$size]:-0}"
+    
+    if [ "$bright_mem" -lt "$meili_mem" ]; then
+        diff=$(( (meili_mem - bright_mem) * 100 / meili_mem ))
+        winner="Bright ($diff% less)"
+    else
+        diff=$(( (bright_mem - meili_mem) * 100 / bright_mem ))
+        winner="Meilisearch ($diff% less)"
+    fi
+    
+    printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_mem" "$meili_mem" "$winner"
 done
 
 echo ""
