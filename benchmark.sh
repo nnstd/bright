@@ -163,6 +163,20 @@ kill $MEILI_PID
 echo -e "${BLUE}=== Results ===${NC}"
 RESULT_FILE="$RESULTS_DIR/benchmark_${TIMESTAMP}.json"
 
+# Calculate averages
+BRIGHT_AVG=$(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
+MEILI_AVG=$(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
+
+# Ensure all values are valid numbers, default to 0 if empty
+BRIGHT_INDEX_TIME=${BRIGHT_INDEX_TIME:-0}
+BRIGHT_SEARCH_1=${BRIGHT_SEARCH_1:-0}
+BRIGHT_SEARCH_2=${BRIGHT_SEARCH_2:-0}
+BRIGHT_SEARCH_3=${BRIGHT_SEARCH_3:-0}
+MEILI_INDEX_TIME=${MEILI_INDEX_TIME:-0}
+MEILI_SEARCH_1=${MEILI_SEARCH_1:-0}
+MEILI_SEARCH_2=${MEILI_SEARCH_2:-0}
+MEILI_SEARCH_3=${MEILI_SEARCH_3:-0}
+
 cat > "$RESULT_FILE" <<EOF
 {
   "timestamp": "$TIMESTAMP",
@@ -171,14 +185,14 @@ cat > "$RESULT_FILE" <<EOF
     "search_laptop_ms": $BRIGHT_SEARCH_1,
     "search_computer_ms": $BRIGHT_SEARCH_2,
     "search_complex_ms": $BRIGHT_SEARCH_3,
-    "avg_search_ms": $(( (BRIGHT_SEARCH_1 + BRIGHT_SEARCH_2 + BRIGHT_SEARCH_3) / 3 ))
+    "avg_search_ms": $BRIGHT_AVG
   },
   "meilisearch": {
     "indexing_ms": $MEILI_INDEX_TIME,
     "search_laptop_ms": $MEILI_SEARCH_1,
     "search_computer_ms": $MEILI_SEARCH_2,
     "search_complex_ms": $MEILI_SEARCH_3,
-    "avg_search_ms": $(( (MEILI_SEARCH_1 + MEILI_SEARCH_2 + MEILI_SEARCH_3) / 3 ))
+    "avg_search_ms": $MEILI_AVG
   }
 }
 EOF
