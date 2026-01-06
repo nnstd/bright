@@ -20,26 +20,68 @@ type Product struct {
 }
 
 var (
-	categories = []string{"Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Toys"}
+	categories = []string{
+		"Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Toys",
+		"Beauty & Health", "Food & Beverage", "Automotive", "Pet Supplies",
+		"Office Supplies", "Music & Instruments", "Tools & Hardware", "Jewelry",
+		"Baby Products", "Art & Craft", "Outdoor & Camping", "Furniture",
+	}
 
 	productNames = []string{
+		// Electronics
 		"Laptop", "Computer", "Smartphone", "Tablet", "Headphones",
+		"Monitor", "Keyboard", "Mouse", "Webcam", "Microphone",
+		"Speaker", "Camera", "Smartwatch", "TV", "Gaming Console",
+		"Router", "Hard Drive", "USB Cable", "Power Bank", "Charger",
+		// Clothing
 		"T-Shirt", "Jeans", "Sneakers", "Jacket", "Hat",
+		"Dress", "Sweater", "Shorts", "Boots", "Sandals",
+		"Scarf", "Gloves", "Socks", "Belt", "Sunglasses",
+		// Books & Media
 		"Novel", "Textbook", "Magazine", "Comic", "Dictionary",
+		"Cookbook", "Biography", "Guidebook", "Workbook", "Atlas",
+		// Home & Garden
 		"Chair", "Table", "Lamp", "Plant", "Curtains",
+		"Vase", "Mirror", "Rug", "Pillow", "Blanket",
+		"Clock", "Frame", "Candle", "Pot", "Garden Tool",
+		// Sports & Fitness
 		"Basketball", "Soccer Ball", "Tennis Racket", "Yoga Mat", "Dumbbell",
+		"Bicycle", "Skateboard", "Running Shoes", "Gym Bag", "Water Bottle",
+		"Resistance Band", "Jump Rope", "Foam Roller", "Protein Powder", "Fitness Tracker",
+		// Toys & Games
 		"Action Figure", "Board Game", "Puzzle", "Doll", "LEGO Set",
+		"RC Car", "Building Blocks", "Plush Toy", "Card Game", "Video Game",
+		// Kitchen & Dining
+		"Blender", "Coffee Maker", "Toaster", "Mixer", "Knife Set",
+		"Pan", "Pot", "Cutting Board", "Spatula", "Measuring Cup",
+		// Beauty & Health
+		"Shampoo", "Conditioner", "Face Cream", "Lipstick", "Perfume",
+		"Hair Dryer", "Straightener", "Nail Polish", "Makeup Brush", "Skincare Set",
+		// Tools & Hardware
+		"Drill", "Hammer", "Screwdriver", "Wrench", "Pliers",
+		"Saw", "Level", "Tape Measure", "Toolbox", "Ladder",
 	}
 
 	adjectives = []string{
 		"Premium", "Professional", "Deluxe", "Standard", "Basic",
 		"Wireless", "Portable", "Compact", "Ergonomic", "Modern",
 		"Classic", "Vintage", "Limited Edition", "Heavy-Duty", "Lightweight",
+		"Ultra", "Pro", "Advanced", "Elite", "Supreme",
+		"Smart", "Digital", "Automatic", "Manual", "Rechargeable",
+		"Waterproof", "Durable", "Flexible", "Adjustable", "Multi-Purpose",
+		"High-Performance", "Energy-Efficient", "Eco-Friendly", "Luxury", "Designer",
+		"Industrial", "Commercial", "Residential", "Outdoor", "Indoor",
+		"Universal", "Custom", "Personalized", "Handmade", "Artisan",
 	}
 
 	tags = []string{
 		"sale", "new", "popular", "trending", "bestseller",
 		"eco-friendly", "premium", "budget", "featured", "clearance",
+		"limited-time", "exclusive", "top-rated", "staff-pick", "customer-favorite",
+		"free-shipping", "on-sale", "deal", "hot", "must-have",
+		"seasonal", "gift-idea", "bundle", "value-pack", "certified",
+		"warranty", "guaranteed", "authentic", "imported", "local",
+		"handpicked", "recommended", "award-winning", "innovative", "upgraded",
 	}
 )
 
