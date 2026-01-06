@@ -81,7 +81,7 @@ func (v *VersionCmd) Run() error {
 
 func startServer(cfg *config.Config, zapLogger *zap.Logger) error {
 	app := fiber.New(fiber.Config{
-		DisableStartupMessage: false,
+		DisableStartupMessage: true,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
