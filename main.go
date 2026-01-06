@@ -27,6 +27,7 @@ var CLI struct {
 
 type ServeCmd struct {
 	MasterKey string `help:"Master key for authentication (overrides BRIGHT_MASTER_KEY env var)" env:"BRIGHT_MASTER_KEY"`
+	DataPath  string `help:"Path to data directory (overrides DATA_PATH env var)" env:"DATA_PATH" default:"./data"`
 }
 
 func (s *ServeCmd) Run() error {
@@ -39,6 +40,11 @@ func (s *ServeCmd) Run() error {
 	// Override master key if provided via flag
 	if s.MasterKey != "" {
 		cfg.MasterKey = s.MasterKey
+	}
+
+	// Override data path if provided via flag
+	if s.DataPath != "" {
+		cfg.DataPath = s.DataPath
 	}
 
 	// Initialize logger
