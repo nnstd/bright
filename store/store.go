@@ -43,8 +43,6 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	fmt.Printf("[DEBUG] CreateIndex called for: %s\n", config.ID)
-
 	if _, exists := s.indexes[config.ID]; exists {
 		return fmt.Errorf("index %s already exists", config.ID)
 	}
@@ -55,7 +53,6 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 	}
 
 	indexPath := filepath.Join(s.dataDir, config.ID)
-	fmt.Printf("[DEBUG] Creating index at path: %s\n", indexPath)
 
 	// Create index mapping
 	indexMapping := bleve.NewIndexMapping()
@@ -66,7 +63,6 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 
 	s.indexes[config.ID] = index
 	s.configs[config.ID] = config
-	fmt.Printf("[DEBUG] Index stored in map. Total indexes: %d\n", len(s.indexes))
 	s.saveConfigs()
 
 	return nil
@@ -77,26 +73,13 @@ func (s *IndexStore) GetIndex(id string) (bleve.Index, *models.IndexConfig, erro
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	fmt.Printf("[DEBUG] GetIndex called for: %s. Available indexes: %v\n", id, s.getIndexKeys())
-
 	index, exists := s.indexes[id]
 	if !exists {
-		fmt.Printf("[DEBUG] Index %s NOT FOUND in store\n", id)
 		return nil, nil, fmt.Errorf("index %s not found", id)
 	}
 
-	fmt.Printf("[DEBUG] Index %s found successfully\n", id)
 	config := s.configs[id]
 	return index, config, nil
-}
-
-// Helper to get index keys (for debugging)
-func (s *IndexStore) getIndexKeys() []string {
-	keys := make([]string, 0, len(s.indexes))
-	for k := range s.indexes {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 // DeleteIndex deletes an index
