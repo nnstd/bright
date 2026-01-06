@@ -62,31 +62,33 @@ test_indexing() {
     local url=$2
     local index_name=$3
     local data_file=$4
-    
-    echo -e "${YELLOW}Testing indexing for $engine...${NC}"
+    local time
     
     if [ "$engine" = "bright" ]; then
         # Create index
         curl -s -X POST "$url/indexes" \
             -H "Content-Type: application/json" \
-            -d "{\"id\": \"$index_name\", \"primaryKey\": \"id\"}" > /dev/null
+            -d '{"id": "'"$index_name"'", "primaryKey": "id"}' > /dev/null
         
         # Index documents
-        local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' \
+        time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' \
             -H 'Content-Type: application/json' \
-            --data-binary @$data_file > /dev/null")
+            --data-binary @$data_file > /dev/null 2>&1")
     else
         # Meilisearch
         curl -s -X POST "$url/indexes" \
             -H "Content-Type: application/json" \
-            -d "{\"uid\": \"$index_name\", \"primaryKey\": \"id\"}" > /dev/null
+            -d '{"uid": "'"$index_name"'", "primaryKey": "id"}' > /dev/null
         
-        # Convert JSON Lines to JSON array for Meilisearch
-        local json_array=$(cat $data_file | jq -s '.')
+        # Convert JSON Lines to JSON array for Meilisearch and save to temp file
+        local temp_file=$(mktemp)
+        jq -s '.' < "$data_file" > "$temp_file"
         
-        local time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents' \
+        time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents' \
             -H 'Content-Type: application/json' \
-            -d '$json_array' > /dev/null")
+            --data-binary @$temp_file > /dev/null 2>&1")
+        
+        rm -f "$temp_file"
     fi
     
     echo "$time"
@@ -132,6 +134,7 @@ done
 
 # Run Bright benchmarks
 echo -e "${GREEN}=== Benchmarking Bright ===${NC}"
+echo -e "${YELLOW}Testing indexing for Bright...${NC}"
 BRIGHT_INDEX_TIME=$(test_indexing "bright" "$BRIGHT_URL" "products" "benchmarks/test_data.jsonl")
 echo -e "Indexing time: ${GREEN}${BRIGHT_INDEX_TIME}ms${NC}"
 
@@ -167,6 +170,7 @@ done
 
 # Run Meilisearch benchmarks
 echo -e "${GREEN}=== Benchmarking Meilisearch ===${NC}"
+echo -e "${YELLOW}Testing indexing for Meilisearch...${NC}"
 MEILI_INDEX_TIME=$(test_indexing "meilisearch" "$MEILI_URL" "products" "benchmarks/test_data.jsonl")
 echo -e "Indexing time: ${GREEN}${MEILI_INDEX_TIME}ms${NC}"
 
