@@ -8,10 +8,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// Auth creates an authentication middleware
+// Authorization creates an authentication middleware
 // If masterKey is empty, authentication is disabled and all requests are allowed
 // Otherwise, validates Bearer token in Authorization header
-func Auth(cfg *config.Config, logger *zap.Logger) fiber.Handler {
+func Authorization(cfg *config.Config, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// If no master key is configured, skip authentication
 		if !cfg.RequiresAuth() {

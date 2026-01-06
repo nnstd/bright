@@ -3,7 +3,7 @@ package main
 import (
 	"bright/config"
 	"bright/handlers"
-	"bright/middleware"
+	middleware "bright/middlewares"
 	"log"
 
 	"github.com/bytedance/sonic"
@@ -61,21 +61,25 @@ func main() {
 	// Middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
-	app.Use(middleware.Auth(cfg, zapLogger))
+	app.Use(middleware.Authorization(cfg, zapLogger))
 
-	// Index management routes
-	app.Post("/indexes", handlers.CreateIndex)
-	app.Delete("/indexes/:id", handlers.DeleteIndex)
-	app.Patch("/indexes/:id", handlers.UpdateIndex)
+	// API routes grouped under /indexes
+	indexes := app.Group("/indexes")
+	{
+		// Index management
+		indexes.Post("/", handlers.CreateIndex)
+		indexes.Delete("/:id", handlers.DeleteIndex)
+		indexes.Patch("/:id", handlers.UpdateIndex)
 
-	// Document management routes
-	app.Post("/indexes/:id/documents", handlers.AddDocuments)
-	app.Delete("/indexes/:id/documents", handlers.DeleteDocuments)
-	app.Delete("/indexes/:id/documents/:documentid", handlers.DeleteDocument)
-	app.Patch("/indexes/:id/documents/:documentid", handlers.UpdateDocument)
+		// Document management
+		indexes.Post("/:id/documents", handlers.AddDocuments)
+		indexes.Delete("/:id/documents", handlers.DeleteDocuments)
+		indexes.Delete("/:id/documents/:documentid", handlers.DeleteDocument)
+		indexes.Patch("/:id/documents/:documentid", handlers.UpdateDocument)
 
-	// Search routes
-	app.Post("/indexes/:id/searches", handlers.Search)
+		// Search
+		indexes.Post("/:id/searches", handlers.Search)
+	}
 
 	// Start server
 	zapLogger.Info("Server starting", zap.String("address", ":"+cfg.Port))
