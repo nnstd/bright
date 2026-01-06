@@ -66,9 +66,12 @@ test_indexing() {
     
     if [ "$engine" = "bright" ]; then
         # Create index
-        curl -s -X POST "$url/indexes" \
+        local index_json='{"id": "'"$index_name"'", "primaryKey": "id"}'
+        echo -e "${BLUE}Creating Bright index with: $index_json${NC}"
+        local response=$(curl -s -X POST "$url/indexes" \
             -H "Content-Type: application/json" \
-            -d '{"id": "'"$index_name"'", "primaryKey": "id"}' > /dev/null
+            -d "$index_json")
+        echo -e "${BLUE}Response: $response${NC}"
         
         # Index documents
         time=$(measure_time "curl -s -X POST '$url/indexes/$index_name/documents?format=jsoneachrow' \
