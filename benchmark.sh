@@ -107,7 +107,7 @@ test_indexing() {
         # Poll task status until completed
         local task_status="enqueued"
         while [ "$task_status" != "succeeded" ] && [ "$task_status" != "failed" ]; do
-            sleep 0.1
+            sleep 0.5  # Poll every 500ms
             local task_info=$(curl -s "$url/tasks/$task_uid")
             task_status=$(echo "$task_info" | jq -r '.status')
             echo -e "${BLUE}Task status: $task_status${NC}" >&2
