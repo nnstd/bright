@@ -383,12 +383,20 @@ for size in 1000 5000 10000; do
     bright_mem="${BRIGHT_MEMORY[$size]:-0}"
     meili_mem="${MEILI_MEMORY[$size]:-0}"
     
-    if [ "$bright_mem" -lt "$meili_mem" ]; then
+    # Ensure numeric values
+    bright_mem=$(echo "$bright_mem" | grep -o '[0-9]*' | head -1)
+    meili_mem=$(echo "$meili_mem" | grep -o '[0-9]*' | head -1)
+    bright_mem=${bright_mem:-0}
+    meili_mem=${meili_mem:-0}
+    
+    if [ "$bright_mem" -lt "$meili_mem" ] && [ "$meili_mem" -gt 0 ]; then
         diff=$(( (meili_mem - bright_mem) * 100 / meili_mem ))
         winner="Bright ($diff% less)"
-    else
+    elif [ "$meili_mem" -lt "$bright_mem" ] && [ "$bright_mem" -gt 0 ]; then
         diff=$(( (bright_mem - meili_mem) * 100 / bright_mem ))
         winner="Meilisearch ($diff% less)"
+    else
+        winner="Tie"
     fi
     
     printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_mem" "$meili_mem" "$winner"
