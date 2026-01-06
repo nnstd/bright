@@ -1,6 +1,6 @@
 module bright
 
-go 1.21
+go 1.24
 
 require (
 	github.com/blevesearch/bleve/v2 v2.4.0

@@ -1,0 +1,8 @@
+data/
+.git
+.github
+*.md
+test-api.sh
+search-db
+*.log
+.gitignore
