@@ -25,13 +25,20 @@ var CLI struct {
 	Version VersionCmd `cmd:"" help:"Show version information"`
 }
 
-type ServeCmd struct{}
+type ServeCmd struct {
+	MasterKey string `help:"Master key for authentication (overrides BRIGHT_MASTER_KEY env var)" env:"BRIGHT_MASTER_KEY"`
+}
 
 func (s *ServeCmd) Run() error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Failed to load configuration:", err)
+	}
+
+	// Override master key if provided via flag
+	if s.MasterKey != "" {
+		cfg.MasterKey = s.MasterKey
 	}
 
 	// Initialize logger
