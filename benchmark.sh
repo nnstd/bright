@@ -389,10 +389,11 @@ for size in 1000 5000 10000; do
     bright_mem=${bright_mem:-0}
     meili_mem=${meili_mem:-0}
     
-    if [ "$bright_mem" -lt "$meili_mem" ] && [ "$meili_mem" -gt 0 ]; then
+    # Use arithmetic comparison
+    if (( bright_mem < meili_mem )); then
         diff=$(( (meili_mem - bright_mem) * 100 / meili_mem ))
         winner="Bright ($diff% less)"
-    elif [ "$meili_mem" -lt "$bright_mem" ] && [ "$bright_mem" -gt 0 ]; then
+    elif (( meili_mem < bright_mem )); then
         diff=$(( (bright_mem - meili_mem) * 100 / bright_mem ))
         winner="Meilisearch ($diff% less)"
     else
