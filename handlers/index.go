@@ -18,9 +18,10 @@ func CreateIndex(c *fiber.Ctx) error {
 		})
 	}
 
+	// Make copies of the strings to avoid Fiber buffer reuse issues
 	config := &models.IndexConfig{
-		ID:         id,
-		PrimaryKey: primaryKey,
+		ID:         string([]byte(id)),
+		PrimaryKey: string([]byte(primaryKey)),
 	}
 
 	s := store.GetStore()
