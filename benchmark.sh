@@ -48,6 +48,10 @@ if [ ! -f "$MEILISEARCH_BIN" ]; then
     chmod +x "$MEILISEARCH_BIN"
 fi
 
+# Generate test data if not present
+echo -e "${BLUE}Generating test data...${NC}"
+go run benchmarks/generate_data.go
+
 # Build Bright
 echo -e "${BLUE}Building Bright...${NC}"
 go build -o "$BRIGHT_BIN" .
@@ -301,15 +305,15 @@ printf "%-15s %-20s %-20s %-20s\n" "Dataset Size" "Bright Index (ms)" "Meili Ind
 printf "%-15s %-20s %-20s %-20s\n" "---------------" "--------------------" "--------------------" "--------------------"
 
 for size in 1000 5000 10000; do
-    local bright_idx="${BRIGHT_INDEX_TIMES[$size]:-0}"
-    local meili_idx="${MEILI_INDEX_TIMES[$size]:-0}"
+    bright_idx="${BRIGHT_INDEX_TIMES[$size]:-0}"
+    meili_idx="${MEILI_INDEX_TIMES[$size]:-0}"
     
     if [ "$bright_idx" -lt "$meili_idx" ]; then
-        local diff=$(( (meili_idx - bright_idx) * 100 / meili_idx ))
-        local winner="Bright ($diff% faster)"
+        diff=$(( (meili_idx - bright_idx) * 100 / meili_idx ))
+        winner="Bright ($diff% faster)"
     else
-        local diff=$(( (bright_idx - meili_idx) * 100 / bright_idx ))
-        local winner="Meilisearch ($diff% faster)"
+        diff=$(( (bright_idx - meili_idx) * 100 / bright_idx ))
+        winner="Meilisearch ($diff% faster)"
     fi
     
     printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_idx" "$meili_idx" "$winner"
@@ -320,15 +324,15 @@ printf "%-15s %-20s %-20s %-20s\n" "Dataset Size" "Bright Search (ms)" "Meili Se
 printf "%-15s %-20s %-20s %-20s\n" "---------------" "--------------------" "--------------------" "--------------------"
 
 for size in 1000 5000 10000; do
-    local bright_search="${BRIGHT_SEARCH_TIMES[$size]:-0}"
-    local meili_search="${MEILI_SEARCH_TIMES[$size]:-0}"
+    bright_search="${BRIGHT_SEARCH_TIMES[$size]:-0}"
+    meili_search="${MEILI_SEARCH_TIMES[$size]:-0}"
     
     if [ "$bright_search" -lt "$meili_search" ]; then
-        local diff=$(( (meili_search - bright_search) * 100 / meili_search ))
-        local winner="Bright ($diff% faster)"
+        diff=$(( (meili_search - bright_search) * 100 / meili_search ))
+        winner="Bright ($diff% faster)"
     else
-        local diff=$(( (bright_search - meili_search) * 100 / bright_search ))
-        local winner="Meilisearch ($diff% faster)"
+        diff=$(( (bright_search - meili_search) * 100 / bright_search ))
+        winner="Meilisearch ($diff% faster)"
     fi
     
     printf "%-15s %-20s %-20s %-20s\n" "$size docs" "$bright_search" "$meili_search" "$winner"
