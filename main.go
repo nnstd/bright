@@ -63,6 +63,9 @@ func main() {
 	app.Use(recover.New())
 	app.Use(middleware.Authorization(cfg, zapLogger))
 
+	// Health check route
+	app.Get("/health", handlers.Health)
+
 	// API routes grouped under /indexes
 	indexes := app.Group("/indexes")
 	{
