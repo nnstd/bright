@@ -25,6 +25,9 @@ WORKDIR /root/
 # Copy the binary from builder
 COPY --from=builder /app/search-db .
 
+# Set executable permissions
+RUN chmod +x ./search-db
+
 # Create data directory
 RUN mkdir -p /root/data
 
