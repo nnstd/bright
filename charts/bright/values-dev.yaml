@@ -1,0 +1,28 @@
+# Development environment values
+# Minimal resource usage, no persistence, no auth
+
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+
+config:
+  logLevel: "debug"
+  masterKey: ""  # No auth in dev
+
+service:
+  type: NodePort
+
+persistence:
+  enabled: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false

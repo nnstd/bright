@@ -11,21 +11,23 @@ A high-performance full-text search database with REST API built with Go, Fiber,
 - 🎯 Attribute filtering (include/exclude)
 - 💾 Persistent storage with automatic index recovery
 
-## Installation
-
-```bash
-go mod download
-```
-
 ## Running
 
+### Using Docker
+
 ```bash
-go run main.go
-# or
-./search-db
+# Run with authentication
+docker run -p 3000:3000 -e BRIGHT_MASTER_KEY="your-secret-key" -v bright-data:/root/data ghcr.io/nnstd/bright:latest
 ```
 
-The server will start on `http://localhost:3000`
+The server will be on `http://localhost:3000`
+
+### Using Helm (Kubernetes)
+
+```bash
+helm repo add bright https://nnstd.github.io/bright
+helm install bright bright/bright
+```
 
 ## Testing
 
