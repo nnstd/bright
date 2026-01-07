@@ -2,7 +2,7 @@
 replicaCount: 1
 
 image:
-  registry: gcr.io
+  registry: ghcr.io
   repository: nnstd/bright
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

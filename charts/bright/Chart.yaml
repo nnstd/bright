@@ -2,8 +2,8 @@ apiVersion: v2
 name: bright
 description: A Helm chart for Bright - High-performance full-text search database
 type: application
-version: 0.2.1
-appVersion: "1.0.0"
+version: 0.2.2
+appVersion: "0.2"
 keywords:
   - search
   - full-text
