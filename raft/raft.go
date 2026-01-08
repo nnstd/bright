@@ -44,6 +44,9 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore, logger *zap.L
 	raftConfig.LocalID = raft.ServerID(config.NodeID)
 	raftConfig.SnapshotThreshold = 1024 // Snapshot after 1024 log entries
 
+	// Use zap logger for raft library logs
+	raftConfig.Logger = NewHclogAdapter(logger, "raft")
+
 	// Setup FSM
 	fsm := NewFSM(indexStore)
 
