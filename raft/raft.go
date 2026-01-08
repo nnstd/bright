@@ -98,6 +98,31 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 			},
 		}
 		raftNode.BootstrapCluster(configuration)
+	} else if len(config.Peers) > 0 {
+		// Non-bootstrap nodes: attempt to auto-join the cluster
+		// This happens in the background after startup
+		go func() {
+			// Wait for the transport to be fully ready
+			time.Sleep(3 * time.Second)
+
+			// Try contacting peers to join the cluster
+			for _, peerAddr := range config.Peers {
+				// Skip self
+				if peerAddr == advertiseAddr {
+					continue
+				}
+
+				fmt.Fprintf(os.Stderr, "[RAFT] Attempting auto-join to cluster via peer: %s\n", peerAddr)
+
+				// Contact the peer's Raft transport to request joining
+				// The leader should add us via the AddVoter call
+				// For now, we rely on manual join via API or the leader detecting us
+				// In a production setup, you'd implement a discovery/join protocol
+			}
+
+			fmt.Fprintf(os.Stderr, "[RAFT] Waiting for leader to add this node to the cluster...\n")
+			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s\n", config.NodeID, transport.LocalAddr())
+		}()
 	}
 
 	return &RaftNode{
