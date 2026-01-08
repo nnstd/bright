@@ -7,3 +7,7 @@ benchmarks/test_data*.jsonl
 meilisearch
 search-db
 benchmark_output.txt
+
+# Builded binary
+bright
+bright.exe

@@ -16,5 +16,11 @@ spec:
     targetPort: http
     protocol: TCP
     name: {{ .Values.service.portName }}
+  {{- if gt (int .Values.replicaCount) 1 }}
+  - port: {{ .Values.raft.port }}
+    targetPort: raft
+    protocol: TCP
+    name: raft
+  {{- end }}
   selector:
     {{- include "bright.selectorLabels" . | nindent 4 }}

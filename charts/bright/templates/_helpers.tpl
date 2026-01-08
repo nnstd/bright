@@ -81,3 +81,19 @@ PVC name
 {{- include "bright.fullname" . }}-data
 {{- end }}
 {{- end }}
+
+{{/*
+Generate Raft peers list for StatefulSet
+Creates comma-separated list of peer addresses like: bright-0.bright-headless:7000,bright-1.bright-headless:7000
+*/}}
+{{- define "bright.raftPeers" -}}
+{{- $fullname := include "bright.fullname" . -}}
+{{- $namespace := .Release.Namespace -}}
+{{- $raftPort := int .Values.raft.port -}}
+{{- $replicaCount := int .Values.replicaCount -}}
+{{- $peers := list -}}
+{{- range $i := until $replicaCount -}}
+{{- $peers = append $peers (printf "%s-%d.%s-headless.%s.svc.cluster.local:%d" $fullname $i $fullname $namespace $raftPort) -}}
+{{- end -}}
+{{- join "," $peers -}}
+{{- end }}

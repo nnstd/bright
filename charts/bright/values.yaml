@@ -23,6 +23,11 @@ config:
   # Data path for persistent storage
   dataPath: "/data"
 
+# Raft configuration
+raft:
+  # Port for Raft consensus protocol (inter-node communication)
+  port: 7000
+
 # Service configuration
 service:
   type: ClusterIP
