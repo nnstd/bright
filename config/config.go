@@ -18,6 +18,7 @@ type Config struct {
 	RaftNodeID    string `env:"RAFT_NODE_ID"`
 	RaftDir       string `env:"RAFT_DIR"`
 	RaftBind      string `env:"RAFT_BIND" envDefault:"0.0.0.0:7000"`
+	RaftAdvertise string `env:"RAFT_ADVERTISE"` // Advertisable address for Raft
 	RaftBootstrap bool   `env:"RAFT_BOOTSTRAP" envDefault:"false"`
 	RaftPeers     string `env:"RAFT_PEERS"` // Comma-separated peer addresses
 }

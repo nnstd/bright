@@ -23,11 +23,12 @@ type RaftNode struct {
 
 // RaftConfig contains configuration for initializing a Raft node
 type RaftConfig struct {
-	NodeID    string   // Unique node identifier (e.g., "node-0")
-	RaftDir   string   // Directory for Raft persistent state
-	RaftBind  string   // Address for Raft transport (e.g., "0.0.0.0:7000")
-	Bootstrap bool     // Is this the initial cluster bootstrap node?
-	Peers     []string // Initial peer addresses (e.g., ["node-0.bright:7000"])
+	NodeID       string   // Unique node identifier (e.g., "node-0")
+	RaftDir      string   // Directory for Raft persistent state
+	RaftBind     string   // Address for Raft transport (e.g., "0.0.0.0:7000")
+	RaftAdvertise string  // Advertisable address for Raft (e.g., "node-0.bright:7000")
+	Bootstrap    bool     // Is this the initial cluster bootstrap node?
+	Peers        []string // Initial peer addresses (e.g., ["node-0.bright:7000"])
 }
 
 // NewRaftNode creates and initializes a new Raft node
@@ -64,12 +65,18 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 	}
 
 	// Setup network transport
-	addr, err := net.ResolveTCPAddr("tcp", config.RaftBind)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve bind address: %w", err)
+	// Use advertise address if provided, otherwise use bind address
+	advertiseAddr := config.RaftAdvertise
+	if advertiseAddr == "" {
+		advertiseAddr = config.RaftBind
 	}
 
-	transport, err := raft.NewTCPTransport(config.RaftBind, addr, 3, 10*time.Second, os.Stderr)
+	advAddr, err := net.ResolveTCPAddr("tcp", advertiseAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve advertise address: %w", err)
+	}
+
+	transport, err := raft.NewTCPTransport(config.RaftBind, advAddr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transport: %w", err)
 	}

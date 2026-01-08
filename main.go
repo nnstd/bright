@@ -75,11 +75,12 @@ func (s *ServeCmd) Run() error {
 	var raftNode *raft.RaftNode
 	if cfg.RaftEnabled {
 		raftConfig := &raft.RaftConfig{
-			NodeID:    cfg.RaftNodeID,
-			RaftDir:   cfg.RaftDir,
-			RaftBind:  cfg.RaftBind,
-			Bootstrap: cfg.RaftBootstrap,
-			Peers:     cfg.GetRaftPeers(),
+			NodeID:       cfg.RaftNodeID,
+			RaftDir:      cfg.RaftDir,
+			RaftBind:     cfg.RaftBind,
+			RaftAdvertise: cfg.RaftAdvertise,
+			Bootstrap:    cfg.RaftBootstrap,
+			Peers:        cfg.GetRaftPeers(),
 		}
 
 		var err error

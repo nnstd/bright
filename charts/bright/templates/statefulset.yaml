@@ -68,6 +68,8 @@ spec:
               fieldPath: metadata.name
         - name: RAFT_BIND
           value: "0.0.0.0:{{ .Values.raft.port }}"
+        - name: RAFT_ADVERTISE
+          value: "$(RAFT_NODE_ID).{{ include "bright.fullname" . }}-headless.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.raft.port }}"
         - name: RAFT_BOOTSTRAP
           value: {{ eq (int .Values.replicaCount) 1 | ternary "true" "false" | quote }}
         - name: RAFT_PEERS
