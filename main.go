@@ -4,6 +4,7 @@ import (
 	"bright/config"
 	"bright/handlers"
 	middleware "bright/middlewares"
+	"bright/raft"
 	"bright/store"
 	"fmt"
 	"log"
@@ -64,12 +65,62 @@ func (s *ServeCmd) Run() error {
 		zap.String("port", cfg.Port),
 		zap.Bool("auth_enabled", cfg.RequiresAuth()),
 		zap.String("data_path", cfg.DataPath),
+		zap.Bool("raft_enabled", cfg.RaftEnabled),
 	)
 
 	// Initialize store with configured data path
-	store.Initialize(cfg.DataPath)
+	indexStore := store.Initialize(cfg.DataPath)
 
-	return startServer(cfg, zapLogger)
+	// Initialize Raft if enabled
+	var raftNode *raft.RaftNode
+	if cfg.RaftEnabled {
+		raftConfig := &raft.RaftConfig{
+			NodeID:    cfg.RaftNodeID,
+			RaftDir:   cfg.RaftDir,
+			RaftBind:  cfg.RaftBind,
+			Bootstrap: cfg.RaftBootstrap,
+			Peers:     cfg.GetRaftPeers(),
+		}
+
+		// Use K8s discovery if enabled
+		if cfg.K8sEnabled {
+			if cfg.RaftNodeID == "" {
+				nodeID, err := raft.GetNodeIDFromHostname()
+				if err != nil {
+					log.Fatal("Failed to determine node ID:", err)
+				}
+				raftConfig.NodeID = nodeID
+				zapLogger.Info("Detected node ID from hostname", zap.String("node_id", nodeID))
+			}
+
+			peers, err := raft.DiscoverPeers(raft.DiscoveryConfig{
+				K8sServiceName: cfg.K8sServiceName,
+				K8sNamespace:   cfg.K8sNamespace,
+				RaftPort:       cfg.RaftPort,
+			})
+			if err != nil {
+				zapLogger.Warn("Failed to discover K8s peers, using static configuration", zap.Error(err))
+			} else {
+				raftConfig.Peers = peers
+				zapLogger.Info("Discovered K8s peers", zap.Strings("peers", peers))
+			}
+		}
+
+		var err error
+		raftNode, err = raft.NewRaftNode(raftConfig, indexStore)
+		if err != nil {
+			log.Fatal("Failed to initialize Raft:", err)
+		}
+		defer raftNode.Shutdown()
+
+		zapLogger.Info("Raft enabled",
+			zap.String("node_id", raftConfig.NodeID),
+			zap.String("bind", raftConfig.RaftBind),
+			zap.Bool("bootstrap", raftConfig.Bootstrap),
+		)
+	}
+
+	return startServer(cfg, zapLogger, indexStore, raftNode)
 }
 
 type VersionCmd struct{}
@@ -79,7 +130,7 @@ func (v *VersionCmd) Run() error {
 	return nil
 }
 
-func startServer(cfg *config.Config, zapLogger *zap.Logger) error {
+func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.IndexStore, raftNode *raft.RaftNode) error {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -105,6 +156,15 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger) error {
 	app.Use(logger.New())
 	app.Use(recover.New())
 
+	// Inject handler context middleware
+	app.Use(func(c *fiber.Ctx) error {
+		handlers.SetContext(c, &handlers.HandlerContext{
+			Store:    indexStore,
+			RaftNode: raftNode,
+		})
+		return c.Next()
+	})
+
 	// Prometheus metrics (before auth to allow scraping without authentication)
 	prometheus := fiberprometheus.New("bright")
 	prometheus.RegisterAt(app, "/metrics")
@@ -115,6 +175,12 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger) error {
 
 	// Health check route
 	app.Get("/health", handlers.Health)
+
+	// Cluster management routes (if Raft enabled)
+	if cfg.RaftEnabled {
+		app.Get("/cluster/status", handlers.ClusterStatus)
+		app.Post("/cluster/join", handlers.JoinCluster)
+	}
 
 	// API routes grouped under /indexes
 	indexes := app.Group("/indexes")
