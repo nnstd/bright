@@ -82,30 +82,6 @@ func (s *ServeCmd) Run() error {
 			Peers:     cfg.GetRaftPeers(),
 		}
 
-		// Use K8s discovery if enabled
-		if cfg.K8sEnabled {
-			if cfg.RaftNodeID == "" {
-				nodeID, err := raft.GetNodeIDFromHostname()
-				if err != nil {
-					log.Fatal("Failed to determine node ID:", err)
-				}
-				raftConfig.NodeID = nodeID
-				zapLogger.Info("Detected node ID from hostname", zap.String("node_id", nodeID))
-			}
-
-			peers, err := raft.DiscoverPeers(raft.DiscoveryConfig{
-				K8sServiceName: cfg.K8sServiceName,
-				K8sNamespace:   cfg.K8sNamespace,
-				RaftPort:       cfg.RaftPort,
-			})
-			if err != nil {
-				zapLogger.Warn("Failed to discover K8s peers, using static configuration", zap.Error(err))
-			} else {
-				raftConfig.Peers = peers
-				zapLogger.Info("Discovered K8s peers", zap.Strings("peers", peers))
-			}
-		}
-
 		var err error
 		raftNode, err = raft.NewRaftNode(raftConfig, indexStore)
 		if err != nil {

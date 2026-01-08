@@ -19,13 +19,7 @@ type Config struct {
 	RaftDir       string `env:"RAFT_DIR" envDefault:"./data/raft"`
 	RaftBind      string `env:"RAFT_BIND" envDefault:"0.0.0.0:7000"`
 	RaftBootstrap bool   `env:"RAFT_BOOTSTRAP" envDefault:"false"`
-	RaftPeers     string `env:"RAFT_PEERS"` // Comma-separated
-
-	// Kubernetes discovery
-	K8sEnabled     bool   `env:"K8S_ENABLED" envDefault:"false"`
-	K8sServiceName string `env:"K8S_SERVICE_NAME" envDefault:"bright"`
-	K8sNamespace   string `env:"K8S_NAMESPACE" envDefault:"default"`
-	RaftPort       int    `env:"RAFT_PORT" envDefault:"7000"`
+	RaftPeers     string `env:"RAFT_PEERS"` // Comma-separated peer addresses
 }
 
 // Load reads configuration from environment variables
