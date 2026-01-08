@@ -93,11 +93,14 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 
 	// Bootstrap cluster if this is the first node
 	if config.Bootstrap {
+		// Use advertise address for stable DNS-based addressing
+		bootstrapAddr := raft.ServerAddress(advertiseAddr)
+
 		configuration := raft.Configuration{
 			Servers: []raft.Server{
 				{
 					ID:      raftConfig.LocalID,
-					Address: transport.LocalAddr(),
+					Address: bootstrapAddr,
 				},
 			},
 		}
@@ -109,7 +112,7 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 			// Wait for the transport to be fully ready
 			time.Sleep(3 * time.Second)
 
-			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s\n", config.NodeID, transport.LocalAddr())
+			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s (advertise: %s)\n", config.NodeID, transport.LocalAddr(), advertiseAddr)
 
 			// Try contacting peers to join the cluster
 			maxRetries := 30
@@ -127,10 +130,10 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 					// Convert Raft address (host:7000) to HTTP API address (host:3000)
 					httpAddr := strings.Replace(peerAddr, ":7000", ":3000", 1)
 
-					// Prepare join request
+					// Prepare join request with stable DNS-based address
 					joinReq := map[string]string{
 						"node_id": config.NodeID,
-						"addr":    string(transport.LocalAddr()),
+						"addr":    advertiseAddr, // Use DNS name instead of IP
 					}
 
 					jsonData, err := json.Marshal(joinReq)

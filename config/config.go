@@ -44,6 +44,14 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Validate RaftAdvertise is set when Raft is enabled
+	// This is critical for stable addressing in Kubernetes
+	if cfg.RaftEnabled && cfg.RaftAdvertise == "" {
+		// Fallback to RaftBind if not set (for backward compatibility)
+		// but this is not recommended in production
+		cfg.RaftAdvertise = cfg.RaftBind
+	}
+
 	return cfg, nil
 }
 
