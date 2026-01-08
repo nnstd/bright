@@ -2,7 +2,11 @@ package handlers
 
 import (
 	"bright/models"
+	"bright/raft"
 	"bright/store"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
@@ -39,9 +43,44 @@ func CreateIndex(c *fiber.Ctx) error {
 	}
 
 	// Make copies of the strings to avoid Fiber buffer reuse issues
+	id = utils.CopyString(id)
+	primaryKey = utils.CopyString(primaryKey)
+
+	ctx := GetContext(c)
+
+	// If Raft is enabled, apply command through consensus
+	if IsRaftEnabled(c) {
+		if !IsLeader(c) {
+			// Redirect to leader
+			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
+				"error":  "not leader",
+				"leader": ctx.RaftNode.LeaderAddr(),
+			})
+		}
+
+		// Apply command via Raft
+		cmd := raft.Command{
+			Type: raft.CommandCreateIndex,
+			Data: json.RawMessage(fmt.Sprintf(`{"id":"%s","primaryKey":"%s"}`, id, primaryKey)),
+		}
+
+		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		config := &models.IndexConfig{
+			ID:         id,
+			PrimaryKey: primaryKey,
+		}
+		return c.Status(fiber.StatusCreated).JSON(config)
+	}
+
+	// Single-node mode: apply directly
 	config := &models.IndexConfig{
-		ID:         utils.CopyString(id),
-		PrimaryKey: utils.CopyString(primaryKey),
+		ID:         id,
+		PrimaryKey: primaryKey,
 	}
 
 	s := store.GetStore()
@@ -58,6 +97,34 @@ func CreateIndex(c *fiber.Ctx) error {
 func DeleteIndex(c *fiber.Ctx) error {
 	id := c.Params("id")
 
+	ctx := GetContext(c)
+
+	// If Raft is enabled, apply command through consensus
+	if IsRaftEnabled(c) {
+		if !IsLeader(c) {
+			// Redirect to leader
+			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
+				"error":  "not leader",
+				"leader": ctx.RaftNode.LeaderAddr(),
+			})
+		}
+
+		// Apply command via Raft
+		cmd := raft.Command{
+			Type: raft.CommandDeleteIndex,
+			Data: json.RawMessage(fmt.Sprintf(`{"id":"%s"}`, id)),
+		}
+
+		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// Single-node mode: apply directly
 	s := store.GetStore()
 	if err := s.DeleteIndex(id); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -79,6 +146,35 @@ func UpdateIndex(c *fiber.Ctx) error {
 		})
 	}
 
+	ctx := GetContext(c)
+
+	// If Raft is enabled, apply command through consensus
+	if IsRaftEnabled(c) {
+		if !IsLeader(c) {
+			// Redirect to leader
+			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
+				"error":  "not leader",
+				"leader": ctx.RaftNode.LeaderAddr(),
+			})
+		}
+
+		// Apply command via Raft
+		cmd := raft.Command{
+			Type: raft.CommandUpdateIndex,
+			Data: json.RawMessage(fmt.Sprintf(`{"id":"%s","primaryKey":"%s"}`, id, config.PrimaryKey)),
+		}
+
+		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		config.ID = id
+		return c.JSON(config)
+	}
+
+	// Single-node mode: apply directly
 	s := store.GetStore()
 	if err := s.UpdateIndex(id, &config); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

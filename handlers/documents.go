@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"bright/formats"
+	"bright/raft"
 	"bright/store"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/gofiber/fiber/v2"
@@ -41,15 +44,9 @@ func AddDocuments(c *fiber.Ctx) error {
 		})
 	}
 
-	// Process each document
-	batch := index.NewBatch()
+	// Generate document IDs for documents that don't have one
 	for _, doc := range documents {
-		var docID string
-
-		// Check if document has an ID
-		if id, ok := doc[config.PrimaryKey]; ok && id != nil {
-			docID = fmt.Sprintf("%v", id)
-		} else {
+		if id, ok := doc[config.PrimaryKey]; !ok || id == nil {
 			// Generate UUID v7
 			uuidV7, err := uuid.NewV7()
 			if err != nil {
@@ -57,8 +54,60 @@ func AddDocuments(c *fiber.Ctx) error {
 					"error": "failed to generate UUID",
 				})
 			}
-			docID = uuidV7.String()
-			doc[config.PrimaryKey] = docID
+			doc[config.PrimaryKey] = uuidV7.String()
+		}
+	}
+
+	ctx := GetContext(c)
+
+	// If Raft is enabled, apply command through consensus
+	if IsRaftEnabled(c) {
+		if !IsLeader(c) {
+			// Redirect to leader
+			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
+				"error":  "not leader",
+				"leader": ctx.RaftNode.LeaderAddr(),
+			})
+		}
+
+		// Serialize payload
+		payloadData, err := json.Marshal(raft.AddDocumentsPayload{
+			IndexID:   indexID,
+			Documents: documents,
+		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fmt.Sprintf("failed to serialize payload: %v", err),
+			})
+		}
+
+		// Apply command via Raft
+		cmd := raft.Command{
+			Type: raft.CommandAddDocuments,
+			Data: json.RawMessage(payloadData),
+		}
+
+		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+			"indexed": len(documents),
+		})
+	}
+
+	// Single-node mode: process each document in a batch
+	batch := index.NewBatch()
+	for _, doc := range documents {
+		var docID string
+		if id, ok := doc[config.PrimaryKey]; ok && id != nil {
+			docID = fmt.Sprintf("%v", id)
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "document missing primary key",
+			})
 		}
 
 		// Index or update the document
