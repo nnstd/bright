@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
 )
@@ -84,7 +84,7 @@ func (s *ServeCmd) Run() error {
 		}
 
 		var err error
-		raftNode, err = raft.NewRaftNode(raftConfig, indexStore)
+		raftNode, err = raft.NewRaftNode(raftConfig, indexStore, zapLogger)
 		if err != nil {
 			log.Fatal("Failed to initialize Raft:", err)
 		}
@@ -130,7 +130,40 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 	})
 
 	// Middleware
-	app.Use(logger.New())
+	// Custom zap-based request logger
+	app.Use(func(c *fiber.Ctx) error {
+		start := time.Now()
+
+		// Process request
+		err := c.Next()
+
+		// Log request
+		status := c.Response().StatusCode()
+		latency := time.Since(start)
+
+		fields := []zap.Field{
+			zap.Int("status", status),
+			zap.Duration("latency", latency),
+			zap.String("method", c.Method()),
+			zap.String("path", c.Path()),
+			zap.String("ip", c.IP()),
+		}
+
+		if err != nil {
+			fields = append(fields, zap.Error(err))
+		}
+
+		// Log at appropriate level based on status code
+		if status >= 500 {
+			zapLogger.Error("Request failed", fields...)
+		} else if status >= 400 {
+			zapLogger.Warn("Client error", fields...)
+		} else {
+			zapLogger.Info("Request completed", fields...)
+		}
+
+		return err
+	})
 	app.Use(recover.New())
 
 	// Inject handler context middleware

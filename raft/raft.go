@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"go.uber.org/zap"
 )
 
 // RaftNode represents a Raft consensus node
@@ -23,6 +24,7 @@ type RaftNode struct {
 	fsm       *FSM
 	config    *RaftConfig
 	transport *raft.NetworkTransport
+	logger    *zap.Logger
 }
 
 // RaftConfig contains configuration for initializing a Raft node
@@ -36,7 +38,7 @@ type RaftConfig struct {
 }
 
 // NewRaftNode creates and initializes a new Raft node
-func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, error) {
+func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore, logger *zap.Logger) (*RaftNode, error) {
 	// Create Raft configuration
 	raftConfig := raft.DefaultConfig()
 	raftConfig.LocalID = raft.ServerID(config.NodeID)
@@ -112,7 +114,11 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 			// Wait for the transport to be fully ready
 			time.Sleep(3 * time.Second)
 
-			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s (advertise: %s)\n", config.NodeID, transport.LocalAddr(), advertiseAddr)
+			logger.Info("Raft node starting",
+				zap.String("node_id", config.NodeID),
+				zap.String("listen_addr", string(transport.LocalAddr())),
+				zap.String("advertise_addr", advertiseAddr),
+			)
 
 			// Try contacting peers to join the cluster
 			maxRetries := 30
@@ -125,7 +131,11 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 						continue
 					}
 
-					fmt.Fprintf(os.Stderr, "[RAFT] Attempting auto-join to cluster via peer: %s (attempt %d/%d)\n", peerAddr, attempt+1, maxRetries)
+					logger.Info("Attempting to join cluster",
+						zap.String("peer", peerAddr),
+						zap.Int("attempt", attempt+1),
+						zap.Int("max_retries", maxRetries),
+					)
 
 					// Convert Raft address (host:7000) to HTTP API address (host:3000)
 					httpAddr := strings.Replace(peerAddr, ":7000", ":3000", 1)
@@ -138,7 +148,7 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 
 					jsonData, err := json.Marshal(joinReq)
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "[RAFT] Failed to marshal join request: %v\n", err)
+						logger.Error("Failed to marshal join request", zap.Error(err))
 						continue
 					}
 
@@ -151,7 +161,10 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 					)
 
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "[RAFT] Failed to contact peer %s: %v\n", httpAddr, err)
+						logger.Warn("Failed to contact peer",
+							zap.String("peer", httpAddr),
+							zap.Error(err),
+						)
 						continue
 					}
 
@@ -159,10 +172,17 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 					resp.Body.Close()
 
 					if resp.StatusCode == http.StatusOK {
-						fmt.Fprintf(os.Stderr, "[RAFT] Successfully joined cluster via peer %s\n", httpAddr)
+						logger.Info("Successfully joined cluster",
+							zap.String("peer", httpAddr),
+							zap.String("node_id", config.NodeID),
+						)
 						return
 					} else {
-						fmt.Fprintf(os.Stderr, "[RAFT] Join request to %s failed with status %d: %s\n", httpAddr, resp.StatusCode, string(body))
+						logger.Warn("Join request failed",
+							zap.String("peer", httpAddr),
+							zap.Int("status", resp.StatusCode),
+							zap.String("response", string(body)),
+						)
 					}
 				}
 
@@ -172,7 +192,10 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 				}
 			}
 
-			fmt.Fprintf(os.Stderr, "[RAFT] Failed to auto-join cluster after %d attempts\n", maxRetries)
+			logger.Error("Failed to auto-join cluster",
+				zap.Int("attempts", maxRetries),
+				zap.String("node_id", config.NodeID),
+			)
 		}()
 	}
 
@@ -181,6 +204,7 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 		fsm:       fsm,
 		config:    config,
 		transport: transport,
+		logger:    logger,
 	}, nil
 }
 
