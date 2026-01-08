@@ -17,7 +17,22 @@ config:
   # Port for the application
   port: "3000"
   # Master key for authentication (if not set, auth is disabled)
+  # Use EITHER config.masterKey (direct value) OR config.masterKeySecret (external reference)
   masterKey: ""
+
+  # Secret reference configuration for masterKey
+  # Use this to reference an existing Kubernetes Secret instead of providing the value directly
+  # Mutually exclusive with config.masterKey
+  masterKeySecret:
+    # Set to true to use external secret reference instead of direct value
+    enabled: false
+    # Name of the existing Kubernetes Secret containing the master key
+    # Required when enabled=true
+    name: ""
+    # Key/field name within the Secret containing the master key value
+    # Defaults to "master-key"
+    key: "master-key"
+
   # Log level (debug, info, warn, error)
   logLevel: "info"
   # Data path for persistent storage

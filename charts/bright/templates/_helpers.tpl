@@ -83,6 +83,15 @@ PVC name
 {{- end }}
 
 {{/*
+Validate masterKey configuration - ensure only one method is used
+*/}}
+{{- define "bright.validateMasterKeyConfig" -}}
+{{- if and .Values.config.masterKey .Values.config.masterKeySecret.enabled }}
+{{- fail "ERROR: Cannot use both config.masterKey and config.masterKeySecret.enabled simultaneously. Please use only one method: (1) Direct value: Set config.masterKey and leave config.masterKeySecret.enabled=false, OR (2) Secret reference: Set config.masterKeySecret.enabled=true and provide config.masterKeySecret.name" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Generate Raft peers list for StatefulSet
 Creates comma-separated list of peer addresses like: bright-0.bright-headless:7000,bright-1.bright-headless:7000
 */}}
