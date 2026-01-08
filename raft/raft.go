@@ -2,11 +2,15 @@ package raft
 
 import (
 	"bright/store"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -105,23 +109,67 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore) (*RaftNode, e
 			// Wait for the transport to be fully ready
 			time.Sleep(3 * time.Second)
 
+			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s\n", config.NodeID, transport.LocalAddr())
+
 			// Try contacting peers to join the cluster
-			for _, peerAddr := range config.Peers {
-				// Skip self
-				if peerAddr == advertiseAddr {
-					continue
+			maxRetries := 30
+			retryDelay := 5 * time.Second
+
+			for attempt := 0; attempt < maxRetries; attempt++ {
+				for _, peerAddr := range config.Peers {
+					// Skip self
+					if peerAddr == advertiseAddr {
+						continue
+					}
+
+					fmt.Fprintf(os.Stderr, "[RAFT] Attempting auto-join to cluster via peer: %s (attempt %d/%d)\n", peerAddr, attempt+1, maxRetries)
+
+					// Convert Raft address (host:7000) to HTTP API address (host:3000)
+					httpAddr := strings.Replace(peerAddr, ":7000", ":3000", 1)
+
+					// Prepare join request
+					joinReq := map[string]string{
+						"node_id": config.NodeID,
+						"addr":    string(transport.LocalAddr()),
+					}
+
+					jsonData, err := json.Marshal(joinReq)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "[RAFT] Failed to marshal join request: %v\n", err)
+						continue
+					}
+
+					// Send HTTP POST to /cluster/join
+					httpClient := &http.Client{Timeout: 5 * time.Second}
+					resp, err := httpClient.Post(
+						fmt.Sprintf("http://%s/cluster/join", httpAddr),
+						"application/json",
+						bytes.NewBuffer(jsonData),
+					)
+
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "[RAFT] Failed to contact peer %s: %v\n", httpAddr, err)
+						continue
+					}
+
+					body, _ := io.ReadAll(resp.Body)
+					resp.Body.Close()
+
+					if resp.StatusCode == http.StatusOK {
+						fmt.Fprintf(os.Stderr, "[RAFT] Successfully joined cluster via peer %s\n", httpAddr)
+						return
+					} else {
+						fmt.Fprintf(os.Stderr, "[RAFT] Join request to %s failed with status %d: %s\n", httpAddr, resp.StatusCode, string(body))
+					}
 				}
 
-				fmt.Fprintf(os.Stderr, "[RAFT] Attempting auto-join to cluster via peer: %s\n", peerAddr)
-
-				// Contact the peer's Raft transport to request joining
-				// The leader should add us via the AddVoter call
-				// For now, we rely on manual join via API or the leader detecting us
-				// In a production setup, you'd implement a discovery/join protocol
+				// Wait before retrying
+				if attempt < maxRetries-1 {
+					time.Sleep(retryDelay)
+				}
 			}
 
-			fmt.Fprintf(os.Stderr, "[RAFT] Waiting for leader to add this node to the cluster...\n")
-			fmt.Fprintf(os.Stderr, "[RAFT] Node %s listening at %s\n", config.NodeID, transport.LocalAddr())
+			fmt.Fprintf(os.Stderr, "[RAFT] Failed to auto-join cluster after %d attempts\n", maxRetries)
 		}()
 	}
 
