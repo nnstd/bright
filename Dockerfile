@@ -20,7 +20,7 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder
 COPY --from=builder /app/search-db .
@@ -29,7 +29,7 @@ COPY --from=builder /app/search-db .
 RUN chmod +x ./search-db
 
 # Create data directory
-RUN mkdir -p /root/data
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 3000
