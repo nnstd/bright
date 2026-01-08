@@ -8,6 +8,6 @@ meilisearch
 search-db
 benchmark_output.txt
 
-# Builded binary
-bright
-bright.exe
+# Built binary
+/bright
+/bright.exe
