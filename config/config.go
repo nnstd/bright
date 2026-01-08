@@ -35,6 +35,15 @@ func Load() (*Config, error) {
 		cfg.RaftDir = cfg.DataPath + "/raft"
 	}
 
+	// Auto-detect bootstrap for StatefulSet pod-0
+	// If RAFT_BOOTSTRAP env var is not explicitly set and Raft is enabled,
+	// enable bootstrap for the first pod (node ID ending with -0)
+	if cfg.RaftEnabled && !cfg.RaftBootstrap {
+		if strings.HasSuffix(cfg.RaftNodeID, "-0") {
+			cfg.RaftBootstrap = true
+		}
+	}
+
 	return cfg, nil
 }
 
