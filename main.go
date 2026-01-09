@@ -181,11 +181,11 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
+	// Health check route (before auth to allow health checks without authentication)
+	app.Get("/health", handlers.Health)
+
 	// Authentication middleware
 	app.Use(middleware.Authorization(cfg, zapLogger))
-
-	// Health check route
-	app.Get("/health", handlers.Health)
 
 	// Cluster management routes (if Raft enabled)
 	if cfg.RaftEnabled {
