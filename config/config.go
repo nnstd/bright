@@ -35,9 +35,10 @@ func Load() (*Config, error) {
 	}
 
 	// Support environment variable aliases for backward compatibility
-	if cfg.Port == "" {
-		cfg.Port = getEnvWithFallback("BRIGHT_PORT", "HTTP_PORT", "PORT")
-		if cfg.Port == "" {
+	if cfg.Port == "" || cfg.Port == "3000" {
+		if port := getEnvWithFallback("BRIGHT_PORT", "HTTP_PORT", "PORT"); port != "" {
+			cfg.Port = port
+		} else if cfg.Port == "" {
 			cfg.Port = "3000" // default
 		}
 	}
@@ -46,16 +47,18 @@ func Load() (*Config, error) {
 		cfg.MasterKey = getEnvWithFallback("BRIGHT_MASTER_KEY", "MASTER_KEY")
 	}
 
-	if cfg.LogLevel == "" {
-		cfg.LogLevel = getEnvWithFallback("BRIGHT_LOG_LEVEL", "LOG_LEVEL")
-		if cfg.LogLevel == "" {
+	if cfg.LogLevel == "" || cfg.LogLevel == "info" {
+		if logLevel := getEnvWithFallback("BRIGHT_LOG_LEVEL", "LOG_LEVEL"); logLevel != "" {
+			cfg.LogLevel = logLevel
+		} else if cfg.LogLevel == "" {
 			cfg.LogLevel = "info" // default
 		}
 	}
 
-	if cfg.DataPath == "" {
-		cfg.DataPath = getEnvWithFallback("BRIGHT_DATA_PATH", "DATA_PATH")
-		if cfg.DataPath == "" {
+	if cfg.DataPath == "" || cfg.DataPath == "./data" {
+		if dataPath := getEnvWithFallback("BRIGHT_DATA_PATH", "DATA_PATH"); dataPath != "" {
+			cfg.DataPath = dataPath
+		} else if cfg.DataPath == "" {
 			cfg.DataPath = "./data" // default
 		}
 	}

@@ -56,11 +56,11 @@ spec:
           protocol: TCP
         {{- end }}
         env:
-        - name: PORT
+        - name: BRIGHT_PORT
           value: {{ .Values.config.port | quote }}
-        - name: LOG_LEVEL
+        - name: BRIGHT_LOG_LEVEL
           value: {{ .Values.config.logLevel | quote }}
-        - name: DATA_PATH
+        - name: BRIGHT_DATA_PATH
           value: {{ .Values.config.dataPath | quote }}
         {{- if gt (int .Values.replicaCount) 1 }}
         # Raft configuration (enabled when replicas > 1)
