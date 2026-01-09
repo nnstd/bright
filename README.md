@@ -17,7 +17,7 @@ A high-performance full-text search database with REST API built with Go, Fiber,
 
 ```bash
 # Run with authentication
-docker run -p 3000:3000 -e BRIGHT_MASTER_KEY="your-secret-key" -v bright-data:/root/data ghcr.io/nnstd/bright:latest
+docker run -p 3000:3000 -e BRIGHT_MASTER_KEY="your-secret-key" -v bright-data:/app/data ghcr.io/nnstd/bright:latest
 ```
 
 The server will be on `http://localhost:3000`
