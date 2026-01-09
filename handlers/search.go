@@ -37,6 +37,33 @@ func Search(c *fiber.Ctx) error {
 		})
 	}
 
+	// Parse request body if provided (can override query params)
+	var bodyParams models.SearchRequest
+	if err := c.BodyParser(&bodyParams); err == nil {
+		// Override with body params if provided
+		if bodyParams.Query != "" {
+			params.Q = bodyParams.Query
+		}
+		if bodyParams.Limit > 0 {
+			params.Limit = bodyParams.Limit
+		}
+		if bodyParams.Offset > 0 {
+			params.Offset = bodyParams.Offset
+		}
+		if bodyParams.Page > 0 {
+			params.Page = bodyParams.Page
+		}
+		if len(bodyParams.Sort) > 0 {
+			params.Sort = bodyParams.Sort
+		}
+		if len(bodyParams.AttributesToRetrieve) > 0 {
+			params.AttributesToRetrieve = bodyParams.AttributesToRetrieve
+		}
+		if len(bodyParams.AttributesToExclude) > 0 {
+			params.AttributesToExclude = bodyParams.AttributesToExclude
+		}
+	}
+
 	queryStr := params.Q
 	offset := params.Offset
 	limit := params.Limit

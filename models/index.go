@@ -13,6 +13,7 @@ type SearchRequest struct {
 	Offset               int      `json:"offset"`
 	Limit                int      `json:"limit"`
 	Page                 int      `json:"page"`
+	Sort                 []string `json:"sort,omitempty"`
 	AttributesToRetrieve []string `json:"attributesToRetrieve"`
 	AttributesToExclude  []string `json:"attributesToExclude"`
 }
