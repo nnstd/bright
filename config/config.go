@@ -14,7 +14,7 @@ type Config struct {
 	DataPath  string `env:"DATA_PATH,BRIGHT_DATA_PATH" envDefault:"./data"`
 
 	// Auto-create indexes on first document insert
-	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX,BRIGHT_AUTO_CREATE_INDEX" envDefault:"false"`
+	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX,BRIGHT_AUTO_CREATE_INDEX" envDefault:"true"`
 
 	// Raft configuration
 	RaftEnabled   bool   `env:"RAFT_ENABLED" envDefault:"false"`
