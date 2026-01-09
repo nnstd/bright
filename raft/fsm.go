@@ -44,6 +44,8 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 		return f.applyDeleteDocuments(cmd.Data)
 	case CommandUpdateDocument:
 		return f.applyUpdateDocument(cmd.Data)
+	case CommandAutoCreateAndAddDocuments:
+		return f.applyAutoCreateAndAddDocuments(cmd.Data)
 	default:
 		return fmt.Errorf("unknown command type: %s", cmd.Type)
 	}
@@ -143,4 +145,31 @@ func (f *FSM) applyUpdateDocument(data json.RawMessage) interface{} {
 	}
 
 	return f.store.UpdateDocumentInternal(payload.IndexID, payload.DocumentID, payload.Updates)
+}
+
+func (f *FSM) applyAutoCreateAndAddDocuments(data json.RawMessage) interface{} {
+	var payload AutoCreateAndAddDocumentsPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+
+	// Check if index already exists (race safety)
+	_, _, err := f.store.GetIndex(payload.IndexID)
+	if err == nil {
+		// Index already exists, just add documents
+		return f.store.AddDocumentsInternal(payload.IndexID, payload.Documents)
+	}
+
+	// Create the index first
+	config := &models.IndexConfig{
+		ID:         payload.IndexID,
+		PrimaryKey: payload.PrimaryKey,
+	}
+
+	if err := f.store.CreateIndexInternal(config); err != nil {
+		return err
+	}
+
+	// Then add documents
+	return f.store.AddDocumentsInternal(payload.IndexID, payload.Documents)
 }

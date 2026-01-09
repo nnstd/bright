@@ -16,6 +16,9 @@ const (
 	CommandDeleteDocument  CommandType = "delete_document"
 	CommandDeleteDocuments CommandType = "delete_documents"
 	CommandUpdateDocument  CommandType = "update_document"
+
+	// Compound operations
+	CommandAutoCreateAndAddDocuments CommandType = "auto_create_and_add_documents"
 )
 
 // Command represents a replicated operation that flows through Raft consensus
@@ -69,4 +72,11 @@ type UpdateDocumentPayload struct {
 	IndexID    string                 `json:"index_id"`
 	DocumentID string                 `json:"document_id"`
 	Updates    map[string]interface{} `json:"updates"`
+}
+
+// AutoCreateAndAddDocumentsPayload contains data for auto-creating an index and adding documents
+type AutoCreateAndAddDocumentsPayload struct {
+	IndexID    string                   `json:"index_id"`
+	PrimaryKey string                   `json:"primary_key"`
+	Documents  []map[string]interface{} `json:"documents"`
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bright/config"
 	"bright/raft"
 	"bright/store"
 
@@ -11,6 +12,7 @@ import (
 type HandlerContext struct {
 	Store    *store.IndexStore
 	RaftNode *raft.RaftNode
+	Config   *config.Config
 }
 
 const contextKey = "handler_context"

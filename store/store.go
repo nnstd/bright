@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 
 	"bright/models"
@@ -451,4 +453,43 @@ func (s *IndexStore) UpdateDocumentInternal(indexID, documentID string, updates 
 	}
 
 	return nil
+}
+
+// DetectPrimaryKey analyzes documents and returns the primary key attribute
+// Returns error if no candidates or multiple candidates are found
+func DetectPrimaryKey(documents []map[string]interface{}) (string, error) {
+	if len(documents) == 0 {
+		return "", fmt.Errorf("cannot detect primary key from empty document set")
+	}
+
+	// Collect all unique attribute names ending with "id" (case-insensitive)
+	candidates := make(map[string]bool)
+
+	for _, doc := range documents {
+		for attr := range doc {
+			if strings.HasSuffix(strings.ToLower(attr), "id") {
+				candidates[attr] = true
+			}
+		}
+	}
+
+	// Validate exactly one candidate exists
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no primary key candidate found (no attribute ending with 'id')")
+	}
+	if len(candidates) > 1 {
+		candidateList := make([]string, 0, len(candidates))
+		for k := range candidates {
+			candidateList = append(candidateList, k)
+		}
+		sort.Strings(candidateList)
+		return "", fmt.Errorf("multiple primary key candidates found: %v", candidateList)
+	}
+
+	// Extract the single candidate
+	for candidate := range candidates {
+		return candidate, nil
+	}
+
+	return "", fmt.Errorf("unexpected error in primary key detection")
 }

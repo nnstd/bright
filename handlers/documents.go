@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bright/formats"
+	"bright/models"
 	"bright/raft"
 	"bright/store"
 	"encoding/json"
@@ -13,18 +14,65 @@ import (
 	"github.com/google/uuid"
 )
 
+// handleRaftAutoCreate handles automatic index creation in Raft mode
+func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConfig, documents []map[string]interface{}) error {
+	ctx := GetContext(c)
+
+	if !IsLeader(c) {
+		return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
+			"error":  "not leader",
+			"leader": ctx.RaftNode.LeaderAddr(),
+		})
+	}
+
+	// Generate UUIDs for documents missing primary key
+	for _, doc := range documents {
+		if id, ok := doc[config.PrimaryKey]; !ok || id == nil {
+			uuidV7, err := uuid.NewV7()
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "failed to generate UUID",
+				})
+			}
+			doc[config.PrimaryKey] = uuidV7.String()
+		}
+	}
+
+	// Serialize payload
+	payloadData, err := json.Marshal(raft.AutoCreateAndAddDocumentsPayload{
+		IndexID:    indexID,
+		PrimaryKey: config.PrimaryKey,
+		Documents:  documents,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fmt.Sprintf("failed to serialize payload: %v", err),
+		})
+	}
+
+	// Apply via Raft
+	cmd := raft.Command{
+		Type: raft.CommandAutoCreateAndAddDocuments,
+		Data: json.RawMessage(payloadData),
+	}
+
+	if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"indexed":      len(documents),
+		"auto_created": true,
+		"primary_key":  config.PrimaryKey,
+	})
+}
+
 // AddDocuments handles POST /indexes/:id/documents
 func AddDocuments(c *fiber.Ctx) error {
 	indexID := c.Params("id")
 	format := c.Query("format", "jsoneachrow")
-
-	s := store.GetStore()
-	index, config, err := s.GetIndex(indexID)
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
 
 	body := c.Body()
 
@@ -42,6 +90,51 @@ func AddDocuments(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fmt.Sprintf("parse error: %v", err),
 		})
+	}
+
+	s := store.GetStore()
+	index, config, err := s.GetIndex(indexID)
+
+	// If index doesn't exist, attempt auto-creation if enabled
+	if err != nil {
+		ctx := GetContext(c)
+		if !ctx.Config.AutoCreateIndex {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		// Detect primary key from documents
+		primaryKey, err := store.DetectPrimaryKey(documents)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("cannot auto-create index: %v", err),
+			})
+		}
+
+		autoConfig := &models.IndexConfig{
+			ID:         indexID,
+			PrimaryKey: primaryKey,
+		}
+
+		// Single-node mode: create directly
+		if !IsRaftEnabled(c) {
+			if err := s.CreateIndex(autoConfig); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": fmt.Sprintf("failed to auto-create index: %v", err),
+				})
+			}
+			// Get the newly created index
+			index, config, err = s.GetIndex(indexID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": err.Error(),
+				})
+			}
+		} else {
+			// Raft mode: use compound command
+			return handleRaftAutoCreate(c, indexID, autoConfig, documents)
+		}
 	}
 
 	// Generate document IDs for documents that don't have one

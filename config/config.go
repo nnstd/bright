@@ -13,6 +13,9 @@ type Config struct {
 	LogLevel  string `env:"LOG_LEVEL" envDefault:"info"`
 	DataPath  string `env:"DATA_PATH" envDefault:"./data"`
 
+	// Auto-create indexes on first document insert
+	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX" envDefault:"false"`
+
 	// Raft configuration
 	RaftEnabled   bool   `env:"RAFT_ENABLED" envDefault:"false"`
 	RaftNodeID    string `env:"RAFT_NODE_ID"`

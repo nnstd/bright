@@ -171,6 +171,7 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 		handlers.SetContext(c, &handlers.HandlerContext{
 			Store:    indexStore,
 			RaftNode: raftNode,
+			Config:   cfg,
 		})
 		return c.Next()
 	})
