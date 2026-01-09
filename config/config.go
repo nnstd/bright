@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -8,13 +9,13 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Port      string `env:"PORT,HTTP_PORT,BRIGHT_PORT" envDefault:"3000"`
-	MasterKey string `env:"MASTER_KEY,BRIGHT_MASTER_KEY"`
-	LogLevel  string `env:"LOG_LEVEL,BRIGHT_LOG_LEVEL" envDefault:"info"`
-	DataPath  string `env:"DATA_PATH,BRIGHT_DATA_PATH" envDefault:"./data"`
+	Port      string `env:"BRIGHT_PORT" envDefault:"3000"`
+	MasterKey string `env:"BRIGHT_MASTER_KEY"`
+	LogLevel  string `env:"BRIGHT_LOG_LEVEL" envDefault:"info"`
+	DataPath  string `env:"BRIGHT_DATA_PATH" envDefault:"./data"`
 
 	// Auto-create indexes on first document insert
-	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX,BRIGHT_AUTO_CREATE_INDEX" envDefault:"true"`
+	AutoCreateIndex bool `env:"BRIGHT_AUTO_CREATE_INDEX" envDefault:"true"`
 
 	// Raft configuration
 	RaftEnabled   bool   `env:"RAFT_ENABLED" envDefault:"false"`
@@ -31,6 +32,37 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
+	}
+
+	// Support environment variable aliases for backward compatibility
+	if cfg.Port == "" {
+		cfg.Port = getEnvWithFallback("BRIGHT_PORT", "HTTP_PORT", "PORT")
+		if cfg.Port == "" {
+			cfg.Port = "3000" // default
+		}
+	}
+
+	if cfg.MasterKey == "" {
+		cfg.MasterKey = getEnvWithFallback("BRIGHT_MASTER_KEY", "MASTER_KEY")
+	}
+
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = getEnvWithFallback("BRIGHT_LOG_LEVEL", "LOG_LEVEL")
+		if cfg.LogLevel == "" {
+			cfg.LogLevel = "info" // default
+		}
+	}
+
+	if cfg.DataPath == "" {
+		cfg.DataPath = getEnvWithFallback("BRIGHT_DATA_PATH", "DATA_PATH")
+		if cfg.DataPath == "" {
+			cfg.DataPath = "./data" // default
+		}
+	}
+
+	// AutoCreateIndex needs special handling since it's a bool
+	if autoCreateStr := getEnvWithFallback("BRIGHT_AUTO_CREATE_INDEX", "AUTO_CREATE_INDEX"); autoCreateStr != "" {
+		cfg.AutoCreateIndex = autoCreateStr == "true" || autoCreateStr == "1"
 	}
 
 	// Set RaftDir to DataPath/raft if not explicitly configured
@@ -56,6 +88,16 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// getEnvWithFallback returns the first non-empty environment variable from the list
+func getEnvWithFallback(keys ...string) string {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 // RequiresAuth returns true if authentication is enabled
