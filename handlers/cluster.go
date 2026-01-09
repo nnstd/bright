@@ -31,34 +31,25 @@ func JoinCluster(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return BadRequest(c, ErrorCodeInvalidRequestBody, "invalid request body")
 	}
 
 	if req.NodeID == "" || req.Addr == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "node_id and addr are required",
-		})
+		return BadRequest(c, ErrorCodeMissingParameter, "node_id and addr are required")
 	}
 
 	ctx := GetContext(c)
 
 	if !IsLeader(c) {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error":  "only leader can add nodes",
-			"leader": ctx.RaftNode.LeaderAddr(),
-		})
+		return ForbiddenWithLeader(c, ErrorCodeLeaderOnlyOperation, "only leader can add nodes", ctx.RaftNode.LeaderAddr())
 	}
 
 	if err := ctx.RaftNode.Join(req.NodeID, req.Addr); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeClusterUnavailable, "failed to join node to cluster", err.Error())
 	}
 
 	return c.JSON(fiber.Map{
-		"status": "joined",
+		"status":  "joined",
 		"node_id": req.NodeID,
 	})
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"bright/models"
 	"bright/store"
-	"fmt"
 	"math"
 	"strings"
 
@@ -32,9 +31,7 @@ func Search(c *fiber.Ctx) error {
 	params.Page = 1
 
 	if err := c.QueryParser(&params); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fmt.Sprintf("invalid query parameters: %v", err),
-		})
+		return BadRequestWithDetails(c, ErrorCodeInvalidParameter, "invalid query parameters", err.Error())
 	}
 
 	// Parse request body if provided (can override query params)
@@ -74,9 +71,7 @@ func Search(c *fiber.Ctx) error {
 
 	// Validate that both attributesToRetrieve and attributesToExclude are not provided
 	if len(attributesToRetrieve) > 0 && len(attributesToExclude) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "cannot use both attributesToRetrieve and attributesToExclude at the same time",
-		})
+		return BadRequest(c, ErrorCodeConflictingParameters, "cannot use both attributesToRetrieve and attributesToExclude at the same time")
 	}
 
 	// Calculate offset from page if page is provided
@@ -87,9 +82,7 @@ func Search(c *fiber.Ctx) error {
 	s := store.GetStore()
 	index, _, err := s.GetIndex(indexID)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	// Create search query
@@ -136,9 +129,7 @@ func Search(c *fiber.Ctx) error {
 	// Execute search
 	searchResult, err := index.Search(searchRequest)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fmt.Sprintf("search failed: %v", err),
-		})
+		return BadRequestWithDetails(c, ErrorCodeSearchFailed, "search failed", err.Error())
 	}
 
 	// Process results

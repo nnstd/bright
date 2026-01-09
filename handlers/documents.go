@@ -19,10 +19,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 	ctx := GetContext(c)
 
 	if !IsLeader(c) {
-		return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
-			"error":  "not leader",
-			"leader": ctx.RaftNode.LeaderAddr(),
-		})
+		return TemporaryRedirect(c, ctx.RaftNode.LeaderAddr())
 	}
 
 	// Generate UUIDs for documents missing primary key
@@ -30,9 +27,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 		if id, ok := doc[config.PrimaryKey]; !ok || id == nil {
 			uuidV7, err := uuid.NewV7()
 			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": "failed to generate UUID",
-				})
+				return InternalError(c, ErrorCodeUUIDGenerationFailed, "failed to generate UUID")
 			}
 			doc[config.PrimaryKey] = uuidV7.String()
 		}
@@ -45,9 +40,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 		Documents:  documents,
 	})
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to serialize payload: %v", err),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeSerializationFailed, "failed to serialize payload", err.Error())
 	}
 
 	// Apply via Raft
@@ -57,9 +50,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 	}
 
 	if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeRaftApplyFailed, "failed to auto-create index and add documents", err.Error())
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -79,17 +70,13 @@ func AddDocuments(c *fiber.Ctx) error {
 	// Get the appropriate parser for the format
 	parser, err := formats.GetParser(format)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return BadRequestWithDetails(c, ErrorCodeInvalidFormat, "invalid format parameter", err.Error())
 	}
 
 	// Parse documents using the format parser
 	documents, err := parser.Parse(body)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fmt.Sprintf("parse error: %v", err),
-		})
+		return BadRequestWithDetails(c, ErrorCodeParseError, "failed to parse documents", err.Error())
 	}
 
 	s := store.GetStore()
@@ -99,17 +86,13 @@ func AddDocuments(c *fiber.Ctx) error {
 	if err != nil {
 		ctx := GetContext(c)
 		if !ctx.Config.AutoCreateIndex {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 		}
 
 		// Detect primary key from documents
 		primaryKey, err := store.DetectPrimaryKey(documents)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("cannot auto-create index: %v", err),
-			})
+			return BadRequestWithDetails(c, ErrorCodeInvalidParameter, "cannot auto-create index", err.Error())
 		}
 
 		autoConfig := &models.IndexConfig{
@@ -120,16 +103,12 @@ func AddDocuments(c *fiber.Ctx) error {
 		// Single-node mode: create directly
 		if !IsRaftEnabled(c) {
 			if err := s.CreateIndex(autoConfig); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": fmt.Sprintf("failed to auto-create index: %v", err),
-				})
+				return InternalErrorWithDetails(c, ErrorCodeIndexOperationFailed, "failed to auto-create index", err.Error())
 			}
 			// Get the newly created index
 			index, config, err = s.GetIndex(indexID)
 			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": err.Error(),
-				})
+				return InternalError(c, ErrorCodeIndexOperationFailed, err.Error())
 			}
 		} else {
 			// Raft mode: use compound command
@@ -143,9 +122,7 @@ func AddDocuments(c *fiber.Ctx) error {
 			// Generate UUID v7
 			uuidV7, err := uuid.NewV7()
 			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": "failed to generate UUID",
-				})
+				return InternalError(c, ErrorCodeUUIDGenerationFailed, "failed to generate UUID")
 			}
 			doc[config.PrimaryKey] = uuidV7.String()
 		}
@@ -157,10 +134,7 @@ func AddDocuments(c *fiber.Ctx) error {
 	if IsRaftEnabled(c) {
 		if !IsLeader(c) {
 			// Redirect to leader
-			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
-				"error":  "not leader",
-				"leader": ctx.RaftNode.LeaderAddr(),
-			})
+			return TemporaryRedirect(c, ctx.RaftNode.LeaderAddr())
 		}
 
 		// Serialize payload
@@ -169,9 +143,7 @@ func AddDocuments(c *fiber.Ctx) error {
 			Documents: documents,
 		})
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("failed to serialize payload: %v", err),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeSerializationFailed, "failed to serialize payload", err.Error())
 		}
 
 		// Apply command via Raft
@@ -181,9 +153,7 @@ func AddDocuments(c *fiber.Ctx) error {
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeRaftApplyFailed, "failed to add documents via Raft", err.Error())
 		}
 
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -198,23 +168,17 @@ func AddDocuments(c *fiber.Ctx) error {
 		if id, ok := doc[config.PrimaryKey]; ok && id != nil {
 			docID = fmt.Sprintf("%v", id)
 		} else {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "document missing primary key",
-			})
+			return InternalError(c, ErrorCodeDocumentOperationFailed, "document missing primary key")
 		}
 
 		// Index or update the document
 		if err := batch.Index(docID, doc); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("failed to index document: %v", err),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeDocumentOperationFailed, "failed to index document", err.Error())
 		}
 	}
 
 	if err := index.Batch(batch); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to commit batch: %v", err),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeBatchOperationFailed, "failed to commit batch", err.Error())
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -233,9 +197,7 @@ func DeleteDocuments(c *fiber.Ctx) error {
 	}
 
 	if err := c.QueryParser(&params); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fmt.Sprintf("invalid query parameters: %v", err),
-		})
+		return BadRequestWithDetails(c, ErrorCodeInvalidParameter, "invalid query parameters", err.Error())
 	}
 
 	filter := params.Filter
@@ -244,9 +206,7 @@ func DeleteDocuments(c *fiber.Ctx) error {
 	s := store.GetStore()
 	index, _, err := s.GetIndex(indexID)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	batch := index.NewBatch()
@@ -264,9 +224,7 @@ func DeleteDocuments(c *fiber.Ctx) error {
 
 		searchResult, err := index.Search(searchRequest)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("failed to search: %v", err),
-			})
+			return BadRequestWithDetails(c, ErrorCodeSearchFailed, "failed to search documents", err.Error())
 		}
 
 		for _, hit := range searchResult.Hits {
@@ -274,15 +232,11 @@ func DeleteDocuments(c *fiber.Ctx) error {
 		}
 	} else {
 		// Delete all documents - recreate the index
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "must provide ids[] or filter parameter to delete documents",
-		})
+		return BadRequest(c, ErrorCodeMissingParameter, "must provide ids[] or filter parameter to delete documents")
 	}
 
 	if err := index.Batch(batch); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to delete documents: %v", err),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeBatchOperationFailed, "failed to delete documents", err.Error())
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -296,15 +250,11 @@ func DeleteDocument(c *fiber.Ctx) error {
 	s := store.GetStore()
 	index, _, err := s.GetIndex(indexID)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	if err := index.Delete(documentID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to delete document: %v", err),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeDocumentOperationFailed, "failed to delete document", err.Error())
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -318,16 +268,12 @@ func UpdateDocument(c *fiber.Ctx) error {
 	s := store.GetStore()
 	index, _, err := s.GetIndex(indexID)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	var updates map[string]interface{}
 	if err := c.BodyParser(&updates); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return BadRequest(c, ErrorCodeInvalidRequestBody, "invalid request body")
 	}
 
 	// Get existing document by searching for it
@@ -336,9 +282,7 @@ func UpdateDocument(c *fiber.Ctx) error {
 	searchRequest.Fields = []string{"*"}
 	searchResult, err := index.Search(searchRequest)
 	if err != nil || len(searchResult.Hits) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "document not found",
-		})
+		return NotFound(c, ErrorCodeDocumentNotFound, "document not found")
 	}
 
 	// Merge updates with existing document
@@ -355,9 +299,7 @@ func UpdateDocument(c *fiber.Ctx) error {
 
 	// Re-index the document
 	if err := index.Index(documentID, existingData); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to update document: %v", err),
-		})
+		return InternalErrorWithDetails(c, ErrorCodeDocumentOperationFailed, "failed to update document", err.Error())
 	}
 
 	return c.JSON(existingData)

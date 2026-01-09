@@ -37,9 +37,7 @@ func CreateIndex(c *fiber.Ctx) error {
 	primaryKey := c.Query("primaryKey")
 
 	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "id parameter is required",
-		})
+		return BadRequest(c, ErrorCodeMissingParameter, "id parameter is required")
 	}
 
 	// Make copies of the strings to avoid Fiber buffer reuse issues
@@ -58,10 +56,7 @@ func CreateIndex(c *fiber.Ctx) error {
 	if IsRaftEnabled(c) {
 		if !IsLeader(c) {
 			// Redirect to leader
-			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
-				"error":  "not leader",
-				"leader": ctx.RaftNode.LeaderAddr(),
-			})
+			return TemporaryRedirect(c, ctx.RaftNode.LeaderAddr())
 		}
 
 		// Build config JSON with exclude attributes
@@ -79,9 +74,7 @@ func CreateIndex(c *fiber.Ctx) error {
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeRaftApplyFailed, "failed to create index via Raft", err.Error())
 		}
 
 		return c.Status(fiber.StatusCreated).JSON(config)
@@ -96,9 +89,11 @@ func CreateIndex(c *fiber.Ctx) error {
 
 	s := store.GetStore()
 	if err := s.CreateIndex(config); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		// Check if it's a duplicate index error
+		if err.Error() == fmt.Sprintf("index %s already exists", id) {
+			return Conflict(c, ErrorCodeResourceAlreadyExists, err.Error())
+		}
+		return InternalErrorWithDetails(c, ErrorCodeIndexOperationFailed, "failed to create index", err.Error())
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(config)
@@ -114,10 +109,7 @@ func DeleteIndex(c *fiber.Ctx) error {
 	if IsRaftEnabled(c) {
 		if !IsLeader(c) {
 			// Redirect to leader
-			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
-				"error":  "not leader",
-				"leader": ctx.RaftNode.LeaderAddr(),
-			})
+			return TemporaryRedirect(c, ctx.RaftNode.LeaderAddr())
 		}
 
 		// Apply command via Raft
@@ -127,9 +119,7 @@ func DeleteIndex(c *fiber.Ctx) error {
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeRaftApplyFailed, "failed to delete index via Raft", err.Error())
 		}
 
 		return c.Status(fiber.StatusNoContent).Send(nil)
@@ -138,9 +128,7 @@ func DeleteIndex(c *fiber.Ctx) error {
 	// Single-node mode: apply directly
 	s := store.GetStore()
 	if err := s.DeleteIndex(id); err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -152,9 +140,7 @@ func UpdateIndex(c *fiber.Ctx) error {
 
 	var config models.IndexConfig
 	if err := c.BodyParser(&config); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return BadRequest(c, ErrorCodeInvalidRequestBody, "invalid request body")
 	}
 
 	ctx := GetContext(c)
@@ -163,10 +149,7 @@ func UpdateIndex(c *fiber.Ctx) error {
 	if IsRaftEnabled(c) {
 		if !IsLeader(c) {
 			// Redirect to leader
-			return c.Status(fiber.StatusTemporaryRedirect).JSON(fiber.Map{
-				"error":  "not leader",
-				"leader": ctx.RaftNode.LeaderAddr(),
-			})
+			return TemporaryRedirect(c, ctx.RaftNode.LeaderAddr())
 		}
 
 		// Ensure ID is set and serialize full config
@@ -180,9 +163,7 @@ func UpdateIndex(c *fiber.Ctx) error {
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return InternalErrorWithDetails(c, ErrorCodeRaftApplyFailed, "failed to update index via Raft", err.Error())
 		}
 
 		return c.JSON(config)
@@ -191,9 +172,7 @@ func UpdateIndex(c *fiber.Ctx) error {
 	// Single-node mode: apply directly
 	s := store.GetStore()
 	if err := s.UpdateIndex(id, &config); err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return NotFound(c, ErrorCodeIndexNotFound, err.Error())
 	}
 
 	return c.JSON(config)
