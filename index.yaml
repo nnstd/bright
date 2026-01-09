@@ -2,6 +2,25 @@ apiVersion: v1
 entries:
   bright:
   - apiVersion: v2
+    appVersion: "0.4"
+    created: "2026-01-09T20:56:05.169703269Z"
+    description: A Helm chart for Bright - High-performance full-text search database
+    digest: c82442b0094c0ed940a424f05544d1d423247f06c3584e2f630a7b92e679d106
+    home: https://github.com/nnstd/bright
+    keywords:
+    - search
+    - full-text
+    - database
+    - bleve
+    maintainers:
+    - email: nganzikov@gmail.com
+      name: Nikita Ganzikov
+    name: bright
+    type: application
+    urls:
+    - https://github.com/nnstd/bright/releases/download/bright-0.4.0/bright-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
     appVersion: "0.3"
     created: "2026-01-08T21:38:43.998339515Z"
     description: A Helm chart for Bright - High-performance full-text search database
@@ -248,4 +267,4 @@ entries:
     urls:
     - https://github.com/nnstd/bright/releases/download/bright-0.2.0/bright-0.2.0.tgz
     version: 0.2.0
-generated: "2026-01-08T21:38:43.998371265Z"
+generated: "2026-01-09T20:56:05.169738425Z"
