@@ -8,13 +8,13 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Port      string `env:"PORT" envDefault:"3000"`
-	MasterKey string `env:"BRIGHT_MASTER_KEY"`
-	LogLevel  string `env:"LOG_LEVEL" envDefault:"info"`
-	DataPath  string `env:"DATA_PATH" envDefault:"./data"`
+	Port      string `env:"PORT,HTTP_PORT,BRIGHT_PORT" envDefault:"3000"`
+	MasterKey string `env:"MASTER_KEY,BRIGHT_MASTER_KEY"`
+	LogLevel  string `env:"LOG_LEVEL,BRIGHT_LOG_LEVEL" envDefault:"info"`
+	DataPath  string `env:"DATA_PATH,BRIGHT_DATA_PATH" envDefault:"./data"`
 
 	// Auto-create indexes on first document insert
-	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX" envDefault:"false"`
+	AutoCreateIndex bool `env:"AUTO_CREATE_INDEX,BRIGHT_AUTO_CREATE_INDEX" envDefault:"false"`
 
 	// Raft configuration
 	RaftEnabled   bool   `env:"RAFT_ENABLED" envDefault:"false"`
