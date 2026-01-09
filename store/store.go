@@ -73,6 +73,16 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 
 	// Create index mapping
 	indexMapping := bleve.NewIndexMapping()
+
+	// Apply exclude attributes if specified
+	if len(config.ExcludeAttributes) > 0 {
+		defaultMapping := indexMapping.DefaultMapping
+		for _, attr := range config.ExcludeAttributes {
+			disabledMapping := bleve.NewDocumentDisabledMapping()
+			defaultMapping.AddSubDocumentMapping(attr, disabledMapping)
+		}
+	}
+
 	index, err := bleve.New(indexPath, indexMapping)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
@@ -264,6 +274,16 @@ func (s *IndexStore) CreateIndexInternal(config *models.IndexConfig) error {
 
 	// Create index mapping
 	indexMapping := bleve.NewIndexMapping()
+
+	// Apply exclude attributes if specified
+	if len(config.ExcludeAttributes) > 0 {
+		defaultMapping := indexMapping.DefaultMapping
+		for _, attr := range config.ExcludeAttributes {
+			disabledMapping := bleve.NewDocumentDisabledMapping()
+			defaultMapping.AddSubDocumentMapping(attr, disabledMapping)
+		}
+	}
+
 	index, err := bleve.New(indexPath, indexMapping)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)

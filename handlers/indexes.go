@@ -46,6 +46,12 @@ func CreateIndex(c *fiber.Ctx) error {
 	id = utils.CopyString(id)
 	primaryKey = utils.CopyString(primaryKey)
 
+	// Parse request body for additional options
+	var reqBody struct {
+		ExcludeAttributes []string `json:"excludeAttributes"`
+	}
+	c.BodyParser(&reqBody)
+
 	ctx := GetContext(c)
 
 	// If Raft is enabled, apply command through consensus
@@ -58,10 +64,18 @@ func CreateIndex(c *fiber.Ctx) error {
 			})
 		}
 
+		// Build config JSON with exclude attributes
+		config := &models.IndexConfig{
+			ID:                id,
+			PrimaryKey:        primaryKey,
+			ExcludeAttributes: reqBody.ExcludeAttributes,
+		}
+		configJSON, _ := json.Marshal(config)
+
 		// Apply command via Raft
 		cmd := raft.Command{
 			Type: raft.CommandCreateIndex,
-			Data: json.RawMessage(fmt.Sprintf(`{"id":"%s","primaryKey":"%s"}`, id, primaryKey)),
+			Data: json.RawMessage(configJSON),
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
@@ -70,17 +84,14 @@ func CreateIndex(c *fiber.Ctx) error {
 			})
 		}
 
-		config := &models.IndexConfig{
-			ID:         id,
-			PrimaryKey: primaryKey,
-		}
 		return c.Status(fiber.StatusCreated).JSON(config)
 	}
 
 	// Single-node mode: apply directly
 	config := &models.IndexConfig{
-		ID:         id,
-		PrimaryKey: primaryKey,
+		ID:                id,
+		PrimaryKey:        primaryKey,
+		ExcludeAttributes: reqBody.ExcludeAttributes,
 	}
 
 	s := store.GetStore()
@@ -158,10 +169,14 @@ func UpdateIndex(c *fiber.Ctx) error {
 			})
 		}
 
+		// Ensure ID is set and serialize full config
+		config.ID = id
+		configJSON, _ := json.Marshal(config)
+
 		// Apply command via Raft
 		cmd := raft.Command{
 			Type: raft.CommandUpdateIndex,
-			Data: json.RawMessage(fmt.Sprintf(`{"id":"%s","primaryKey":"%s"}`, id, config.PrimaryKey)),
+			Data: json.RawMessage(configJSON),
 		}
 
 		if err := ctx.RaftNode.Apply(cmd, 10*time.Second); err != nil {
@@ -170,7 +185,6 @@ func UpdateIndex(c *fiber.Ctx) error {
 			})
 		}
 
-		config.ID = id
 		return c.JSON(config)
 	}
 

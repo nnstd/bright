@@ -2,8 +2,9 @@ package models
 
 // IndexConfig represents the configuration for an index
 type IndexConfig struct {
-	ID         string `json:"id"`
-	PrimaryKey string `json:"primaryKey"`
+	ID                string   `json:"id"`
+	PrimaryKey        string   `json:"primaryKey"`
+	ExcludeAttributes []string `json:"excludeAttributes,omitempty"`
 }
 
 // SearchRequest represents a search request
