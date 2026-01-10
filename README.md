@@ -1,6 +1,10 @@
-# Bright
+<div align="center">
+  <img src="assets/logo.svg" alt="Bright Logo" width="200"/>
+</div>
 
-A high-performance full-text search database with REST API built with Go, Fiber, and Bleve.
+<div align="center">
+  A high-performance full-text search database with REST API built with Go, Fiber, and Bleve.
+</div>
 
 ## Features
 
