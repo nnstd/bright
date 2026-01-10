@@ -1,16 +1,14 @@
 package raft
 
 import (
+	"bright/rpc"
 	"bright/store"
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -29,12 +27,14 @@ type RaftNode struct {
 
 // RaftConfig contains configuration for initializing a Raft node
 type RaftConfig struct {
-	NodeID       string   // Unique node identifier (e.g., "node-0")
-	RaftDir      string   // Directory for Raft persistent state
-	RaftBind     string   // Address for Raft transport (e.g., "0.0.0.0:7000")
-	RaftAdvertise string  // Advertisable address for Raft (e.g., "node-0.bright:7000")
-	Bootstrap    bool     // Is this the initial cluster bootstrap node?
-	Peers        []string // Initial peer addresses (e.g., ["node-0.bright:7000"])
+	NodeID       string      // Unique node identifier (e.g., "node-0")
+	RaftDir      string      // Directory for Raft persistent state
+	RaftBind     string      // Address for Raft transport (e.g., "0.0.0.0:7000")
+	RaftAdvertise string     // Advertisable address for Raft (e.g., "node-0.bright:7000")
+	Bootstrap    bool        // Is this the initial cluster bootstrap node?
+	Peers        []string    // Initial peer addresses (e.g., ["node-0.bright:7000"])
+	MasterKey    string      // Master key for authentication when joining cluster
+	RPCClient    rpc.RPCClient // RPC client for cluster communication
 }
 
 // NewRaftNode creates and initializes a new Raft node
@@ -140,53 +140,23 @@ func NewRaftNode(config *RaftConfig, indexStore *store.IndexStore, logger *zap.L
 						zap.Int("max_retries", maxRetries),
 					)
 
-					// Convert Raft address (host:7000) to HTTP API address (host:3000)
-					httpAddr := strings.Replace(peerAddr, ":7000", ":3000", 1)
+					// Use RPC client to join cluster
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					err := config.RPCClient.ClusterJoin(ctx, peerAddr, config.NodeID, advertiseAddr, config.MasterKey)
+					cancel()
 
-					// Prepare join request with stable DNS-based address
-					joinReq := map[string]string{
-						"node_id": config.NodeID,
-						"addr":    advertiseAddr, // Use DNS name instead of IP
-					}
-
-					jsonData, err := json.Marshal(joinReq)
-					if err != nil {
-						logger.Error("Failed to marshal join request", zap.Error(err))
-						continue
-					}
-
-					// Send HTTP POST to /cluster/join
-					httpClient := &http.Client{Timeout: 5 * time.Second}
-					resp, err := httpClient.Post(
-						fmt.Sprintf("http://%s/cluster/join", httpAddr),
-						"application/json",
-						bytes.NewBuffer(jsonData),
-					)
-
-					if err != nil {
-						logger.Warn("Failed to contact peer",
-							zap.String("peer", httpAddr),
-							zap.Error(err),
-						)
-						continue
-					}
-
-					body, _ := io.ReadAll(resp.Body)
-					resp.Body.Close()
-
-					if resp.StatusCode == http.StatusOK {
-						logger.Info("Successfully joined cluster",
-							zap.String("peer", httpAddr),
+					if err == nil {
+						logger.Info("Successfully joined cluster via RPC",
+							zap.String("peer", peerAddr),
 							zap.String("node_id", config.NodeID),
 						)
 						return
-					} else {
-						logger.Warn("Join request failed",
-							zap.String("peer", httpAddr),
-							zap.Int("status", resp.StatusCode),
-							zap.String("response", string(body)),
-						)
 					}
+
+					logger.Warn("Failed to join via peer",
+						zap.String("peer", peerAddr),
+						zap.Error(err),
+					)
 				}
 
 				// Wait before retrying

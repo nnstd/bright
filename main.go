@@ -72,6 +72,12 @@ func (s *ServeCmd) Run() error {
 	// Initialize store with configured data path
 	indexStore := store.Initialize(cfg.DataPath)
 
+	// Initialize RPC client if Raft is enabled (needed for cluster join)
+	var rpcClient rpc.RPCClient
+	if cfg.RaftEnabled {
+		rpcClient = rpc.NewHTTPRPCClient(zapLogger)
+	}
+
 	// Initialize Raft if enabled
 	var raftNode *raft.RaftNode
 	if cfg.RaftEnabled {
@@ -82,6 +88,8 @@ func (s *ServeCmd) Run() error {
 			RaftAdvertise: cfg.RaftAdvertise,
 			Bootstrap:    cfg.RaftBootstrap,
 			Peers:        cfg.GetRaftPeers(),
+			MasterKey:    cfg.MasterKey,
+			RPCClient:    rpcClient,
 		}
 
 		var err error
@@ -96,12 +104,6 @@ func (s *ServeCmd) Run() error {
 			zap.String("bind", raftConfig.RaftBind),
 			zap.Bool("bootstrap", raftConfig.Bootstrap),
 		)
-	}
-
-	// Initialize RPC client if Raft is enabled
-	var rpcClient rpc.RPCClient
-	if cfg.RaftEnabled {
-		rpcClient = rpc.NewHTTPRPCClient(zapLogger)
 	}
 
 	return startServer(cfg, zapLogger, indexStore, raftNode, rpcClient)

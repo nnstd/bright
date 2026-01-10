@@ -6,6 +6,9 @@ import "context"
 type RPCClient interface {
 	// ForwardRequest forwards an HTTP request to the leader node
 	ForwardRequest(ctx context.Context, leaderAddr string, req *ForwardedRequest) (*ForwardedResponse, error)
+
+	// ClusterJoin sends a cluster join request to a peer node
+	ClusterJoin(ctx context.Context, peerRaftAddr, nodeID, addr, masterKey string) error
 }
 
 // ForwardedRequest represents an HTTP request to be forwarded to the leader

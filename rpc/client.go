@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"go.uber.org/zap"
 )
 
@@ -115,4 +116,66 @@ func (c *HTTPRPCClient) ForwardRequest(ctx context.Context, leaderRaftAddr strin
 // convertRaftAddrToHTTP converts a Raft address (port 7000) to HTTP API address (port 3000)
 func convertRaftAddrToHTTP(raftAddr string) string {
 	return strings.Replace(raftAddr, ":7000", ":3000", 1)
+}
+
+// ClusterJoin sends a cluster join request to a peer node
+func (c *HTTPRPCClient) ClusterJoin(ctx context.Context, peerRaftAddr, nodeID, addr, masterKey string) error {
+	// Convert Raft address (port 7000) to HTTP address (port 3000)
+	httpAddr := convertRaftAddrToHTTP(peerRaftAddr)
+
+	// Prepare join request
+	joinReq := map[string]string{
+		"node_id": nodeID,
+		"addr":    addr,
+	}
+
+	jsonData, err := sonic.Marshal(joinReq)
+	if err != nil {
+		c.logger.Error("Failed to marshal join request", zap.Error(err))
+		return fmt.Errorf("failed to marshal join request: %w", err)
+	}
+
+	// Create HTTP request
+	url := fmt.Sprintf("http://%s/cluster/join", httpAddr)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		c.logger.Error("Failed to create join request", zap.Error(err))
+		return fmt.Errorf("failed to create join request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	if masterKey != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", masterKey))
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.logger.Warn("Failed to contact peer",
+			zap.String("peer", httpAddr),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to contact peer: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		c.logger.Warn("Join request failed",
+			zap.String("peer", httpAddr),
+			zap.Int("status", resp.StatusCode),
+			zap.String("response", string(body)),
+		)
+		return fmt.Errorf("join request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	c.logger.Info("Successfully joined cluster",
+		zap.String("peer", httpAddr),
+		zap.String("node_id", nodeID),
+	)
+
+	return nil
 }
