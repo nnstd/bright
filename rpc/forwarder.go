@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	brerrors "bright/errors"
 
@@ -39,8 +40,14 @@ func ForwardToLeader(c *fiber.Ctx, rpcClient RPCClient, leaderRaftAddr string) e
 		req.QueryParams[string(key)] = string(value)
 	}
 
+	// Determine timeout - try to get from HTTPRPCClient, otherwise use default
+	timeout := 10 * time.Second
+	if httpClient, ok := rpcClient.(*HTTPRPCClient); ok {
+		timeout = httpClient.timeout
+	}
+
 	// Forward request to leader
-	ctx, cancel := context.WithTimeout(context.Background(), rpcClient.(*HTTPRPCClient).timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	resp, err := rpcClient.ForwardRequest(ctx, leaderRaftAddr, req)
