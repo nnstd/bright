@@ -1,4 +1,4 @@
-package handlers
+package errors
 
 import (
 	"github.com/gofiber/fiber/v2"
@@ -20,8 +20,7 @@ const (
 	ErrorCodeIndexNotFound    ErrorCode = "INDEX_NOT_FOUND"
 	ErrorCodeDocumentNotFound ErrorCode = "DOCUMENT_NOT_FOUND"
 
-	// Cluster errors (307/503)
-	ErrorCodeNotLeader          ErrorCode = "NOT_LEADER"
+	// Cluster errors (503)
 	ErrorCodeClusterUnavailable ErrorCode = "CLUSTER_UNAVAILABLE"
 
 	// Authorization errors (403)
@@ -32,14 +31,14 @@ const (
 	ErrorCodeResourceAlreadyExists ErrorCode = "RESOURCE_ALREADY_EXISTS"
 
 	// Internal errors (500)
-	ErrorCodeUUIDGenerationFailed   ErrorCode = "UUID_GENERATION_FAILED"
-	ErrorCodeSerializationFailed    ErrorCode = "SERIALIZATION_FAILED"
-	ErrorCodeRaftApplyFailed        ErrorCode = "RAFT_APPLY_FAILED"
-	ErrorCodeIndexOperationFailed   ErrorCode = "INDEX_OPERATION_FAILED"
+	ErrorCodeUUIDGenerationFailed    ErrorCode = "UUID_GENERATION_FAILED"
+	ErrorCodeSerializationFailed     ErrorCode = "SERIALIZATION_FAILED"
+	ErrorCodeRaftApplyFailed         ErrorCode = "RAFT_APPLY_FAILED"
+	ErrorCodeIndexOperationFailed    ErrorCode = "INDEX_OPERATION_FAILED"
 	ErrorCodeDocumentOperationFailed ErrorCode = "DOCUMENT_OPERATION_FAILED"
-	ErrorCodeBatchOperationFailed   ErrorCode = "BATCH_OPERATION_FAILED"
-	ErrorCodeSearchFailed           ErrorCode = "SEARCH_FAILED"
-	ErrorCodeInternalError          ErrorCode = "INTERNAL_ERROR"
+	ErrorCodeBatchOperationFailed    ErrorCode = "BATCH_OPERATION_FAILED"
+	ErrorCodeSearchFailed            ErrorCode = "SEARCH_FAILED"
+	ErrorCodeInternalError           ErrorCode = "INTERNAL_ERROR"
 )
 
 // ErrorResponse represents a structured error response
@@ -114,13 +113,5 @@ func InternalErrorWithDetails(c *fiber.Ctx, code ErrorCode, message, details str
 		Code:    code,
 		Message: message,
 		Details: details,
-	})
-}
-
-func TemporaryRedirect(c *fiber.Ctx, leader string) error {
-	return c.Status(fiber.StatusTemporaryRedirect).JSON(ClusterErrorResponse{
-		Code:    ErrorCodeNotLeader,
-		Message: "not leader",
-		Leader:  leader,
 	})
 }

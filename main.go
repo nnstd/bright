@@ -5,6 +5,7 @@ import (
 	"bright/handlers"
 	middleware "bright/middlewares"
 	"bright/raft"
+	"bright/rpc"
 	"bright/store"
 	"fmt"
 	"log"
@@ -97,7 +98,13 @@ func (s *ServeCmd) Run() error {
 		)
 	}
 
-	return startServer(cfg, zapLogger, indexStore, raftNode)
+	// Initialize RPC client if Raft is enabled
+	var rpcClient rpc.RPCClient
+	if cfg.RaftEnabled {
+		rpcClient = rpc.NewHTTPRPCClient(zapLogger)
+	}
+
+	return startServer(cfg, zapLogger, indexStore, raftNode, rpcClient)
 }
 
 type VersionCmd struct{}
@@ -107,7 +114,7 @@ func (v *VersionCmd) Run() error {
 	return nil
 }
 
-func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.IndexStore, raftNode *raft.RaftNode) error {
+func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.IndexStore, raftNode *raft.RaftNode, rpcClient rpc.RPCClient) error {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -169,9 +176,10 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 	// Inject handler context middleware
 	app.Use(func(c *fiber.Ctx) error {
 		handlers.SetContext(c, &handlers.HandlerContext{
-			Store:    indexStore,
-			RaftNode: raftNode,
-			Config:   cfg,
+			Store:     indexStore,
+			RaftNode:  raftNode,
+			Config:    cfg,
+			RPCClient: rpcClient,
 		})
 		return c.Next()
 	})

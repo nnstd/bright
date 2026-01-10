@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bright/errors"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -31,21 +33,21 @@ func JoinCluster(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return BadRequest(c, ErrorCodeInvalidRequestBody, "invalid request body")
+		return errors.BadRequest(c, errors.ErrorCodeInvalidRequestBody, "invalid request body")
 	}
 
 	if req.NodeID == "" || req.Addr == "" {
-		return BadRequest(c, ErrorCodeMissingParameter, "node_id and addr are required")
+		return errors.BadRequest(c, errors.ErrorCodeMissingParameter, "node_id and addr are required")
 	}
 
 	ctx := GetContext(c)
 
 	if !IsLeader(c) {
-		return ForbiddenWithLeader(c, ErrorCodeLeaderOnlyOperation, "only leader can add nodes", ctx.RaftNode.LeaderAddr())
+		return errors.ForbiddenWithLeader(c, errors.ErrorCodeLeaderOnlyOperation, "only leader can add nodes", ctx.RaftNode.LeaderAddr())
 	}
 
 	if err := ctx.RaftNode.Join(req.NodeID, req.Addr); err != nil {
-		return InternalErrorWithDetails(c, ErrorCodeClusterUnavailable, "failed to join node to cluster", err.Error())
+		return errors.InternalErrorWithDetails(c, errors.ErrorCodeClusterUnavailable, "failed to join node to cluster", err.Error())
 	}
 
 	return c.JSON(fiber.Map{

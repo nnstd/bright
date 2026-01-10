@@ -3,6 +3,7 @@ package handlers
 import (
 	"bright/config"
 	"bright/raft"
+	"bright/rpc"
 	"bright/store"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,9 +11,10 @@ import (
 
 // HandlerContext holds dependencies needed by handlers
 type HandlerContext struct {
-	Store    *store.IndexStore
-	RaftNode *raft.RaftNode
-	Config   *config.Config
+	Store     *store.IndexStore
+	RaftNode  *raft.RaftNode
+	Config    *config.Config
+	RPCClient rpc.RPCClient
 }
 
 const contextKey = "handler_context"
