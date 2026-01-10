@@ -45,8 +45,8 @@ func (s *ServeCmd) Run() error {
 		cfg.MasterKey = s.MasterKey
 	}
 
-	// Override data path if provided via flag
-	if s.DataPath != "" {
+	// Override data path if explicitly provided via flag (not default)
+	if s.DataPath != "" && s.DataPath != "./data" {
 		cfg.DataPath = s.DataPath
 	}
 
@@ -66,6 +66,8 @@ func (s *ServeCmd) Run() error {
 		zap.String("port", cfg.Port),
 		zap.Bool("auth_enabled", cfg.RequiresAuth()),
 		zap.String("data_path", cfg.DataPath),
+		zap.String("data_path_from_env", os.Getenv("BRIGHT_DATA_PATH")),
+		zap.String("serve_cmd_data_path", s.DataPath),
 		zap.Bool("raft_enabled", cfg.RaftEnabled),
 	)
 
