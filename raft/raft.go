@@ -188,8 +188,8 @@ func (r *RaftNode) IsLeader() bool {
 
 // LeaderAddr returns the address of the current leader
 func (r *RaftNode) LeaderAddr() string {
-	_, leaderID := r.raft.LeaderWithID()
-	return string(leaderID)
+	leaderAddr, _ := r.raft.LeaderWithID()
+	return string(leaderAddr)
 }
 
 // Apply submits a command to the Raft log for replication
