@@ -15,6 +15,12 @@
 - 🎯 Attribute filtering (include/exclude)
 - 💾 Persistent storage with automatic index recovery
 
+## Client Libraries
+
+| Language   | Repository |
+|------------|------------|
+| TypeScript | [nnstd/bright-js](https://github.com/nnstd/bright-js) |
+
 ## Running
 
 ### Using Docker
@@ -31,14 +37,6 @@ The server will be on `http://localhost:3000`
 ```bash
 helm repo add bright https://nnstd.github.io/bright
 helm install bright bright/bright
-```
-
-## Testing
-
-Run the included test script:
-
-```bash
-./test-api.sh
 ```
 
 ## Query Syntax
