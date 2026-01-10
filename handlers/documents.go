@@ -66,6 +66,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 func AddDocuments(c *fiber.Ctx) error {
 	indexID := c.Params("id")
 	format := c.Query("format", "jsoneachrow")
+	primaryKey := c.Query("primaryKey")
 
 	body := c.Body()
 
@@ -91,15 +92,21 @@ func AddDocuments(c *fiber.Ctx) error {
 			return errors.NotFound(c, errors.ErrorCodeIndexNotFound, err.Error())
 		}
 
-		// Detect primary key from documents
-		primaryKey, err := store.DetectPrimaryKey(documents)
-		if err != nil {
-			return errors.BadRequestWithDetails(c, errors.ErrorCodeInvalidParameter, "cannot auto-create index", err.Error())
+		// Use provided primaryKey or detect from documents
+		var detectedPrimaryKey string
+		if primaryKey != "" {
+			detectedPrimaryKey = primaryKey
+		} else {
+			var err error
+			detectedPrimaryKey, err = store.DetectPrimaryKey(documents)
+			if err != nil {
+				return errors.BadRequestWithDetails(c, errors.ErrorCodeInvalidParameter, "cannot auto-create index", err.Error())
+			}
 		}
 
 		autoConfig := &models.IndexConfig{
 			ID:         indexID,
-			PrimaryKey: primaryKey,
+			PrimaryKey: detectedPrimaryKey,
 		}
 
 		// Single-node mode: create directly
@@ -118,15 +125,21 @@ func AddDocuments(c *fiber.Ctx) error {
 		}
 	}
 
+	// Determine which primary key to use
+	effectivePrimaryKey := config.PrimaryKey
+	if primaryKey != "" {
+		effectivePrimaryKey = primaryKey
+	}
+
 	// Generate document IDs for documents that don't have one
 	for _, doc := range documents {
-		if id, ok := doc[config.PrimaryKey]; !ok || id == nil {
+		if id, ok := doc[effectivePrimaryKey]; !ok || id == nil {
 			// Generate UUID v7
 			uuidV7, err := uuid.NewV7()
 			if err != nil {
 				return errors.InternalError(c, errors.ErrorCodeUUIDGenerationFailed, "failed to generate UUID")
 			}
-			doc[config.PrimaryKey] = uuidV7.String()
+			doc[effectivePrimaryKey] = uuidV7.String()
 		}
 	}
 
@@ -167,7 +180,7 @@ func AddDocuments(c *fiber.Ctx) error {
 	batch := index.NewBatch()
 	for _, doc := range documents {
 		var docID string
-		if id, ok := doc[config.PrimaryKey]; ok && id != nil {
+		if id, ok := doc[effectivePrimaryKey]; ok && id != nil {
 			docID = fmt.Sprintf("%v", id)
 		} else {
 			return errors.InternalError(c, errors.ErrorCodeDocumentOperationFailed, "document missing primary key")
