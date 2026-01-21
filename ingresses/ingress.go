@@ -14,7 +14,7 @@ const (
 	StatusStarting Status = "starting"
 	StatusRunning  Status = "running"
 	StatusPaused   Status = "paused"
-	StatusError    Status = "error"
+	StatusFailed   Status = "failed"
 	StatusSyncing  Status = "syncing"
 )
 

@@ -557,6 +557,6 @@ func (i *Ingress) setError(msg string) {
 	i.stats.lastError = msg
 	i.stats.errorCount++
 	i.stats.Unlock()
-	i.status.Store(ingresses.StatusError)
+	i.status.Store(ingresses.StatusFailed)
 	i.logger.Error("Ingress error", zap.String("error", msg))
 }
