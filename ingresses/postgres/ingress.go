@@ -353,29 +353,36 @@ func (i *Ingress) doPoll() {
 
 // startListenMode starts the LISTEN/NOTIFY sync
 func (i *Ingress) startListenMode() error {
-	// First, do a full sync using poller
+	// Create poller for sync operations
 	i.poller = NewPoller(i.connector.Pool(), i.config, i.logger)
 	i.poller.SetCallbacks(i.handleDocuments, i.handleDeletes)
 
 	i.stats.RLock()
 	fullSyncComplete := i.stats.fullSyncComplete
+	lastSyncAt := i.stats.lastSyncAt
 	i.stats.RUnlock()
 
-	if !fullSyncComplete {
-		i.logger.Info("Performing initial full sync before listening")
-		if err := i.poller.Poll(i.ctx); err != nil {
-			return fmt.Errorf("initial sync failed: %w", err)
-		}
+	// Set poller state from saved state
+	i.poller.SetState(lastSyncAt, "", fullSyncComplete)
 
-		lastSyncAt, _, complete := i.poller.GetState()
-		i.stats.Lock()
-		i.stats.lastSyncAt = lastSyncAt
-		i.stats.fullSyncComplete = complete
-		i.stats.Unlock()
-		i.saveState()
+	// Always do a catch-up sync on startup to handle changes that occurred
+	// while the service was offline. This will be:
+	// - Full sync if fullSyncComplete is false (first run)
+	// - Incremental sync if fullSyncComplete is true (catching up missed changes)
+	i.logger.Info("Performing catch-up sync before listening",
+		zap.Bool("full_sync_needed", !fullSyncComplete))
+	if err := i.poller.Poll(i.ctx); err != nil {
+		return fmt.Errorf("catch-up sync failed: %w", err)
 	}
 
-	// Start listener
+	newLastSyncAt, _, complete := i.poller.GetState()
+	i.stats.Lock()
+	i.stats.lastSyncAt = newLastSyncAt
+	i.stats.fullSyncComplete = complete
+	i.stats.Unlock()
+	i.saveState()
+
+	// Start listener for real-time updates
 	i.listener = NewListener(i.connector.Pool(), i.config, i.logger)
 	i.listener.SetCallback(i.handleNotify)
 
