@@ -41,4 +41,4 @@ The benchmark measures:
 
 ## Comparison
 
-Results are compared against [Meilisearch v1.31.0](https://github.com/meilisearch/meilisearch/releases/tag/v1.31.0).
+Results are compared against [Meilisearch v1.33.1](https://github.com/meilisearch/meilisearch/releases/tag/v1.33.1).

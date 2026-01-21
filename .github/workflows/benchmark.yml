@@ -150,7 +150,7 @@ jobs:
             
             - **Search Queries**: laptop, computer, complex filter
             - **Platform**: Linux AMD64 (self-hosted)
-            - **Meilisearch Version**: v1.31.0
+            - **Meilisearch Version**: v1.33.1
             
             </details>
             `;
@@ -197,7 +197,7 @@ jobs:
             const m5kMem = '${{ steps.results.outputs.meili_5k_mem }}';
             const m10kMem = '${{ steps.results.outputs.meili_10k_mem }}';
             
-            const comment = `**Benchmark Results** (vs Meilisearch v1.31.0)
+            const comment = `**Benchmark Results** (vs Meilisearch v1.33.1)
             
             **Indexing Performance**
             

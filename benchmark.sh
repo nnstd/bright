@@ -4,7 +4,7 @@ set -e
 # Benchmark script comparing Bright and Meilisearch
 # Usage: ./benchmark.sh
 
-MEILISEARCH_URL="https://github.com/meilisearch/meilisearch/releases/download/v1.31.0/meilisearch-linux-amd64"
+MEILISEARCH_URL="https://github.com/meilisearch/meilisearch/releases/download/v1.33.1/meilisearch-linux-amd64"
 MEILISEARCH_BIN="./meilisearch"
 BRIGHT_BIN="./search-db"
 BRIGHT_URL="http://localhost:3000"
