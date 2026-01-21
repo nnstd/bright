@@ -11,10 +11,11 @@ import (
 
 // HandlerContext holds dependencies needed by handlers
 type HandlerContext struct {
-	Store     *store.IndexStore
-	RaftNode  *raft.RaftNode
-	Config    *config.Config
-	RPCClient rpc.RPCClient
+	Store          *store.IndexStore
+	RaftNode       *raft.RaftNode
+	Config         *config.Config
+	RPCClient      rpc.RPCClient
+	IngressManager IngressManager
 }
 
 const contextKey = "handler_context"

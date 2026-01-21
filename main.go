@@ -3,10 +3,13 @@ package main
 import (
 	"bright/config"
 	"bright/handlers"
+	"bright/ingresses"
+	"bright/ingresses/postgres"
 	middleware "bright/middlewares"
 	"bright/raft"
 	"bright/rpc"
 	"bright/store"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -108,7 +111,22 @@ func (s *ServeCmd) Run() error {
 		)
 	}
 
-	return startServer(cfg, zapLogger, indexStore, raftNode, rpcClient)
+	// Initialize ingress manager
+	ingressManager := ingresses.NewManager(cfg.DataPath, indexStore, raftNode, zapLogger)
+	ingressManager.RegisterFactory("postgres", postgres.Factory)
+
+	// Load existing ingress configurations
+	if err := ingressManager.Load(); err != nil {
+		zapLogger.Warn("Failed to load ingress configurations", zap.Error(err))
+	}
+
+	// Start all ingresses
+	if err := ingressManager.StartAll(context.Background()); err != nil {
+		zapLogger.Warn("Some ingresses failed to start", zap.Error(err))
+	}
+	defer ingressManager.StopAll()
+
+	return startServer(cfg, zapLogger, indexStore, raftNode, rpcClient, ingressManager)
 }
 
 type VersionCmd struct{}
@@ -118,7 +136,7 @@ func (v *VersionCmd) Run() error {
 	return nil
 }
 
-func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.IndexStore, raftNode *raft.RaftNode, rpcClient rpc.RPCClient) error {
+func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.IndexStore, raftNode *raft.RaftNode, rpcClient rpc.RPCClient, ingressManager *ingresses.Manager) error {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -180,10 +198,11 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 	// Inject handler context middleware
 	app.Use(func(c *fiber.Ctx) error {
 		handlers.SetContext(c, &handlers.HandlerContext{
-			Store:     indexStore,
-			RaftNode:  raftNode,
-			Config:    cfg,
-			RPCClient: rpcClient,
+			Store:          indexStore,
+			RaftNode:       raftNode,
+			Config:         cfg,
+			RPCClient:      rpcClient,
+			IngressManager: ingressManager,
 		})
 		return c.Next()
 	})
@@ -222,6 +241,13 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 
 		// Search
 		indexes.Post("/:id/searches", handlers.Search)
+
+		// Ingress management
+		indexes.Get("/:id/ingresses", handlers.ListIngresses)
+		indexes.Post("/:id/ingresses", handlers.CreateIngress)
+		indexes.Get("/:id/ingresses/:ingressId", handlers.GetIngress)
+		indexes.Patch("/:id/ingresses/:ingressId", handlers.UpdateIngress)
+		indexes.Delete("/:id/ingresses/:ingressId", handlers.DeleteIngress)
 	}
 
 	// Start server
