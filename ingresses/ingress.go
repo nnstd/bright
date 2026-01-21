@@ -18,8 +18,8 @@ const (
 	StatusSyncing  Status = "syncing"
 )
 
-// Stats contains synchronization statistics
-type Stats struct {
+// Statistics contains synchronization statistics
+type Statistics struct {
 	LastSyncAt       time.Time `json:"last_sync_at,omitempty"`
 	DocumentsSynced  int64     `json:"documents_synced"`
 	DocumentsDeleted int64     `json:"documents_deleted"`
@@ -57,8 +57,8 @@ type Ingress interface {
 	// Resync triggers a full resynchronization
 	Resync() error
 
-	// Stats returns current synchronization statistics
-	Stats() Stats
+	// Statistics returns current synchronization statistics
+	Statistics() Statistics
 
 	// Config returns the ingress configuration
 	Config() json.RawMessage
@@ -79,7 +79,7 @@ type IngressInfo struct {
 	Type    string          `json:"type"`
 	Status  Status          `json:"status"`
 	Config  json.RawMessage `json:"config"`
-	Stats   Stats           `json:"stats"`
+	Statistics   Statistics           `json:"stats"`
 }
 
 // ToInfo converts an Ingress to IngressInfo for API responses
@@ -90,6 +90,6 @@ func ToInfo(i Ingress) IngressInfo {
 		Type:    i.Type(),
 		Status:  i.Status(),
 		Config:  i.Config(),
-		Stats:   i.Stats(),
+		Statistics:   i.Statistics(),
 	}
 }

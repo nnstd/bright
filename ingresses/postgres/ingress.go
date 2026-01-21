@@ -110,12 +110,12 @@ func (i *Ingress) Config() json.RawMessage {
 	return i.rawConfig
 }
 
-// Stats returns the current statistics
-func (i *Ingress) Stats() ingresses.Stats {
+// Statistics returns the current statistics
+func (i *Ingress) Statistics() ingresses.Statistics {
 	i.stats.RLock()
 	defer i.stats.RUnlock()
 
-	return ingresses.Stats{
+	return ingresses.Statistics{
 		LastSyncAt:       i.stats.lastSyncAt,
 		DocumentsSynced:  i.stats.documentsSynced,
 		DocumentsDeleted: i.stats.documentsDeleted,
