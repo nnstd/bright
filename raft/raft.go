@@ -4,13 +4,13 @@ import (
 	"bright/rpc"
 	"bright/store"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"go.uber.org/zap"
@@ -194,7 +194,7 @@ func (r *RaftNode) LeaderAddr() string {
 
 // Apply submits a command to the Raft log for replication
 func (r *RaftNode) Apply(cmd Command, timeout time.Duration) error {
-	data, err := json.Marshal(cmd)
+	data, err := sonic.Marshal(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to marshal command: %w", err)
 	}

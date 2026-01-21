@@ -2,8 +2,8 @@ package raft
 
 import (
 	"bright/store"
-	"encoding/json"
 
+	"github.com/bytedance/sonic"
 	"github.com/hashicorp/raft"
 )
 
@@ -19,7 +19,7 @@ func (s *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	configs := s.store.GetAllConfigs()
 
 	// Serialize configurations to JSON
-	data, err := json.Marshal(configs)
+	data, err := sonic.Marshal(configs)
 	if err != nil {
 		sink.Cancel()
 		return err

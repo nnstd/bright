@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/bytedance/sonic"
 	"github.com/hashicorp/raft"
 )
 
@@ -25,7 +26,7 @@ func NewFSM(store *store.IndexStore) *FSM {
 // This is called by Raft when a command has been committed
 func (f *FSM) Apply(log *raft.Log) interface{} {
 	var cmd Command
-	if err := json.Unmarshal(log.Data, &cmd); err != nil {
+	if err := sonic.Unmarshal(log.Data, &cmd); err != nil {
 		return fmt.Errorf("failed to unmarshal command: %w", err)
 	}
 
@@ -74,7 +75,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 
 func (f *FSM) applyCreateIndex(data json.RawMessage) interface{} {
 	var payload CreateIndexPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -88,7 +89,7 @@ func (f *FSM) applyCreateIndex(data json.RawMessage) interface{} {
 
 func (f *FSM) applyDeleteIndex(data json.RawMessage) interface{} {
 	var payload DeleteIndexPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -97,7 +98,7 @@ func (f *FSM) applyDeleteIndex(data json.RawMessage) interface{} {
 
 func (f *FSM) applyUpdateIndex(data json.RawMessage) interface{} {
 	var payload UpdateIndexPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -113,7 +114,7 @@ func (f *FSM) applyUpdateIndex(data json.RawMessage) interface{} {
 
 func (f *FSM) applyAddDocuments(data json.RawMessage) interface{} {
 	var payload AddDocumentsPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -122,7 +123,7 @@ func (f *FSM) applyAddDocuments(data json.RawMessage) interface{} {
 
 func (f *FSM) applyDeleteDocument(data json.RawMessage) interface{} {
 	var payload DeleteDocumentPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -131,7 +132,7 @@ func (f *FSM) applyDeleteDocument(data json.RawMessage) interface{} {
 
 func (f *FSM) applyDeleteDocuments(data json.RawMessage) interface{} {
 	var payload DeleteDocumentsPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -140,7 +141,7 @@ func (f *FSM) applyDeleteDocuments(data json.RawMessage) interface{} {
 
 func (f *FSM) applyUpdateDocument(data json.RawMessage) interface{} {
 	var payload UpdateDocumentPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 
@@ -149,7 +150,7 @@ func (f *FSM) applyUpdateDocument(data json.RawMessage) interface{} {
 
 func (f *FSM) applyAutoCreateAndAddDocuments(data json.RawMessage) interface{} {
 	var payload AutoCreateAndAddDocumentsPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := sonic.Unmarshal(data, &payload); err != nil {
 		return err
 	}
 

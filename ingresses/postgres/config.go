@@ -1,9 +1,10 @@
 package postgres
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/bytedance/sonic"
 )
 
 // SyncMode defines how the ingress synchronizes data
@@ -50,12 +51,12 @@ func (d Duration) Duration() time.Duration {
 }
 
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+	return sonic.Marshal(time.Duration(d).String())
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
+	if err := sonic.Unmarshal(b, &v); err != nil {
 		return err
 	}
 	switch value := v.(type) {

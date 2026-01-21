@@ -2,11 +2,11 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
@@ -121,7 +121,7 @@ func (l *Listener) listenLoop(ctx context.Context, conn *pgxpool.Conn) {
 		}
 
 		var payload NotifyPayload
-		if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
+		if err := sonic.UnmarshalString(notification.Payload, &payload); err != nil {
 			l.logger.Warn("Failed to parse notification payload",
 				zap.String("payload", notification.Payload),
 				zap.Error(err))

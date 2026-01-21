@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -36,7 +37,7 @@ func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConf
 	}
 
 	// Serialize payload
-	payloadData, err := json.Marshal(raft.AutoCreateAndAddDocumentsPayload{
+	payloadData, err := sonic.Marshal(raft.AutoCreateAndAddDocumentsPayload{
 		IndexID:    indexID,
 		PrimaryKey: config.PrimaryKey,
 		Documents:  documents,
@@ -153,7 +154,7 @@ func AddDocuments(c *fiber.Ctx) error {
 		}
 
 		// Serialize payload
-		payloadData, err := json.Marshal(raft.AddDocumentsPayload{
+		payloadData, err := sonic.Marshal(raft.AddDocumentsPayload{
 			IndexID:   indexID,
 			Documents: documents,
 		})

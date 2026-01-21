@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 )
@@ -67,7 +68,7 @@ func CreateIndex(c *fiber.Ctx) error {
 			PrimaryKey:        primaryKey,
 			ExcludeAttributes: reqBody.ExcludeAttributes,
 		}
-		configJSON, _ := json.Marshal(config)
+		configJSON, _ := sonic.Marshal(config)
 
 		// Apply command via Raft
 		cmd := raft.Command{
@@ -156,7 +157,7 @@ func UpdateIndex(c *fiber.Ctx) error {
 
 		// Ensure ID is set and serialize full config
 		config.ID = id
-		configJSON, _ := json.Marshal(config)
+		configJSON, _ := sonic.Marshal(config)
 
 		// Apply command via Raft
 		cmd := raft.Command{

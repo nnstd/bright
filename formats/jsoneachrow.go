@@ -30,7 +30,7 @@ func (p *JSONEachRowParser) Parse(data []byte) ([]map[string]interface{}, error)
 		}
 
 		var doc map[string]interface{}
-		if err := sonic.Unmarshal([]byte(line), &doc); err != nil {
+		if err := sonic.UnmarshalString(line, &doc); err != nil {
 			return nil, fmt.Errorf("invalid JSON on line %d: %w", lineNum, err)
 		}
 
