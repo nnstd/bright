@@ -97,7 +97,18 @@ func Search(c *fiber.Ctx) error {
 	searchRequest := bleve.NewSearchRequest(searchQuery)
 	searchRequest.From = offset
 	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"} // Retrieve all fields
+
+	// Optimize field retrieval: only request fields we need
+	if len(attributesToRetrieve) > 0 {
+		// Request only specified fields
+		searchRequest.Fields = attributesToRetrieve
+	} else if len(attributesToExclude) > 0 {
+		// Request all fields (we'll exclude in post-processing)
+		searchRequest.Fields = []string{"*"}
+	} else {
+		// Default: request all fields
+		searchRequest.Fields = []string{"*"}
+	}
 
 	// Apply sorting if provided
 	if len(sortFields) > 0 {
@@ -125,8 +136,6 @@ func Search(c *fiber.Ctx) error {
 		searchRequest.SortBy([]string{"-_score"})
 	}
 
-	// rchRequest.Fields = []string{"*"} // Retrieve all fields
-
 	// Execute search
 	searchResult, err := index.Search(searchRequest)
 	if err != nil {
@@ -148,18 +157,8 @@ func Search(c *fiber.Ctx) error {
 			doc["id"] = hit.ID
 		}
 
-		// Filter attributes: use either attributesToRetrieve OR attributesToExclude
-		if len(attributesToRetrieve) > 0 {
-			// If attributesToRetrieve is specified, only include those attributes
-			filteredDoc := make(map[string]interface{})
-			for _, attr := range attributesToRetrieve {
-				if val, ok := doc[attr]; ok {
-					filteredDoc[attr] = val
-				}
-			}
-			doc = filteredDoc
-		} else if len(attributesToExclude) > 0 {
-			// Otherwise, if attributesToExclude is specified, exclude those attributes
+		// Apply attributesToExclude if specified (only needed when not using attributesToRetrieve)
+		if len(attributesToExclude) > 0 {
 			for _, attr := range attributesToExclude {
 				delete(doc, attr)
 			}
