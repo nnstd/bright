@@ -177,7 +177,7 @@ func (p *Poller) fetchBatch(ctx context.Context, afterID string) ([]map[string]a
 	}
 	defer rows.Close()
 
-	var docs []map[string]any
+	docs := make([]map[string]any, 0, p.config.BatchSize)
 	var lastID string
 
 	for rows.Next() {
@@ -224,7 +224,7 @@ func (p *Poller) fetchChanges(ctx context.Context) ([]map[string]any, error) {
 	}
 	defer rows.Close()
 
-	var docs []map[string]any
+	docs := make([]map[string]any, 0, p.config.BatchSize)
 	for rows.Next() {
 		doc, err := p.mapper.RowToDocument(rows)
 		if err != nil {
@@ -256,7 +256,7 @@ func (p *Poller) fetchDeletes(ctx context.Context) ([]string, error) {
 	}
 	defer rows.Close()
 
-	var ids []string
+	ids := make([]string, 0, p.config.BatchSize)
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
