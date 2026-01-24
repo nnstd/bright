@@ -395,18 +395,37 @@ func (s *IndexStore) DeleteDocumentsInternal(indexID, filter string, ids []strin
 			batch.Delete(id)
 		}
 	} else if filter != "" {
-		// Search with filter and delete matching documents
+		// Search with filter and delete matching documents using pagination
 		query := bleve.NewQueryStringQuery(filter)
-		searchRequest := bleve.NewSearchRequest(query)
-		searchRequest.Size = 10000 // Limit for safety
+		pageSize := 10000
+		offset := 0
 
-		searchResult, err := index.Search(searchRequest)
-		if err != nil {
-			return fmt.Errorf("failed to search: %w", err)
-		}
+		for {
+			searchRequest := bleve.NewSearchRequest(query)
+			searchRequest.From = offset
+			searchRequest.Size = pageSize
 
-		for _, hit := range searchResult.Hits {
-			batch.Delete(hit.ID)
+			searchResult, err := index.Search(searchRequest)
+			if err != nil {
+				return fmt.Errorf("failed to search: %w", err)
+			}
+
+			// If no results, we're done
+			if len(searchResult.Hits) == 0 {
+				break
+			}
+
+			// Delete documents from this page
+			for _, hit := range searchResult.Hits {
+				batch.Delete(hit.ID)
+			}
+
+			// If we got fewer results than page size, we've reached the end
+			if len(searchResult.Hits) < pageSize {
+				break
+			}
+
+			offset += pageSize
 		}
 	} else {
 		return fmt.Errorf("must provide ids or filter parameter to delete documents")
