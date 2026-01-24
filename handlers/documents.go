@@ -292,7 +292,7 @@ func UpdateDocument(c *fiber.Ctx) error {
 		return errors.BadRequest(c, errors.ErrorCodeInvalidRequestBody, "invalid request body")
 	}
 
-	// Get existing document by searching for it
+	// Get existing document
 	query := bleve.NewDocIDQuery([]string{documentID})
 	searchRequest := bleve.NewSearchRequest(query)
 	searchRequest.Fields = []string{"*"}
@@ -303,10 +303,8 @@ func UpdateDocument(c *fiber.Ctx) error {
 
 	// Merge updates with existing document
 	existingData := make(map[string]interface{})
-	if len(searchResult.Hits) > 0 {
-		for fieldName, fieldValue := range searchResult.Hits[0].Fields {
-			existingData[fieldName] = fieldValue
-		}
+	for fieldName, fieldValue := range searchResult.Hits[0].Fields {
+		existingData[fieldName] = fieldValue
 	}
 
 	for key, value := range updates {
