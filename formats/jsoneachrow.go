@@ -14,8 +14,8 @@ import (
 type JSONEachRowParser struct{}
 
 // Parse parses JSON Lines format (one JSON object per line)
-func (p *JSONEachRowParser) Parse(data []byte) ([]map[string]interface{}, error) {
-	var documents []map[string]interface{}
+func (p *JSONEachRowParser) Parse(data []byte) ([]map[string]any, error) {
+	var documents []map[string]any
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	lineNum := 0
@@ -29,7 +29,7 @@ func (p *JSONEachRowParser) Parse(data []byte) ([]map[string]interface{}, error)
 			continue
 		}
 
-		var doc map[string]interface{}
+		var doc map[string]any
 		if err := sonic.UnmarshalString(line, &doc); err != nil {
 			return nil, fmt.Errorf("invalid JSON on line %d: %w", lineNum, err)
 		}

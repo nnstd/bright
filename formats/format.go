@@ -5,7 +5,7 @@ import "errors"
 // DocumentParser is an interface for parsing documents from different formats
 type DocumentParser interface {
 	// Parse parses the input data and returns a slice of documents
-	Parse(data []byte) ([]map[string]interface{}, error)
+	Parse(data []byte) ([]map[string]any, error)
 }
 
 // ErrUnsupportedFormat is returned when the requested format is not supported

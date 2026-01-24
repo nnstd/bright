@@ -18,7 +18,7 @@ import (
 )
 
 // handleRaftAutoCreate handles automatic index creation in Raft mode
-func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConfig, documents []map[string]interface{}) error {
+func handleRaftAutoCreate(c *fiber.Ctx, indexID string, config *models.IndexConfig, documents []map[string]any) error {
 	ctx := GetContext(c)
 
 	if !IsLeader(c) {
@@ -287,7 +287,7 @@ func UpdateDocument(c *fiber.Ctx) error {
 		return errors.NotFound(c, errors.ErrorCodeIndexNotFound, err.Error())
 	}
 
-	var updates map[string]interface{}
+	var updates map[string]any
 	if err := c.BodyParser(&updates); err != nil {
 		return errors.BadRequest(c, errors.ErrorCodeInvalidRequestBody, "invalid request body")
 	}
@@ -302,7 +302,7 @@ func UpdateDocument(c *fiber.Ctx) error {
 	}
 
 	// Merge updates with existing document
-	existingData := make(map[string]interface{})
+	existingData := make(map[string]any)
 	for fieldName, fieldValue := range searchResult.Hits[0].Fields {
 		existingData[fieldName] = fieldValue
 	}

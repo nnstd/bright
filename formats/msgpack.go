@@ -11,8 +11,8 @@ import (
 type MsgpackParser struct{}
 
 // Parse parses MessagePack format data
-func (p *MsgpackParser) Parse(data []byte) ([]map[string]interface{}, error) {
-	var documents []map[string]interface{}
+func (p *MsgpackParser) Parse(data []byte) ([]map[string]any, error) {
+	var documents []map[string]any
 
 	decoder := codec.NewDecoderBytes(data, &codec.MsgpackHandle{})
 

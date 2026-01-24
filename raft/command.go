@@ -50,8 +50,8 @@ type UpdateIndexPayload struct {
 
 // AddDocumentsPayload contains data for adding documents to an index
 type AddDocumentsPayload struct {
-	IndexID   string                   `json:"index_id"`
-	Documents []map[string]interface{} `json:"documents"`
+	IndexID   string           `json:"index_id"`
+	Documents []map[string]any `json:"documents"`
 }
 
 // DeleteDocumentPayload contains data for deleting a single document
@@ -69,14 +69,14 @@ type DeleteDocumentsPayload struct {
 
 // UpdateDocumentPayload contains data for updating a document
 type UpdateDocumentPayload struct {
-	IndexID    string                 `json:"index_id"`
-	DocumentID string                 `json:"document_id"`
-	Updates    map[string]interface{} `json:"updates"`
+	IndexID    string         `json:"index_id"`
+	DocumentID string         `json:"document_id"`
+	Updates    map[string]any `json:"updates"`
 }
 
 // AutoCreateAndAddDocumentsPayload contains data for auto-creating an index and adding documents
 type AutoCreateAndAddDocumentsPayload struct {
-	IndexID    string                   `json:"index_id"`
-	PrimaryKey string                   `json:"primary_key"`
-	Documents  []map[string]interface{} `json:"documents"`
+	IndexID    string           `json:"index_id"`
+	PrimaryKey string           `json:"primary_key"`
+	Documents  []map[string]any `json:"documents"`
 }

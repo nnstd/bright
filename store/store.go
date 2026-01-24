@@ -18,6 +18,7 @@ import (
 type IndexStore struct {
 	indexes    map[string]bleve.Index
 	configs    map[string]*models.IndexConfig
+	indexLocks map[string]*sync.RWMutex
 	mu         sync.RWMutex
 	dataDir    string
 	configFile string
@@ -34,6 +35,7 @@ func Initialize(dataDir string) *IndexStore {
 		store = &IndexStore{
 			indexes:    make(map[string]bleve.Index),
 			configs:    make(map[string]*models.IndexConfig),
+			indexLocks: make(map[string]*sync.RWMutex),
 			dataDir:    dataDir,
 			configFile: filepath.Join(dataDir, "configs.json"),
 		}
@@ -49,12 +51,27 @@ func GetStore() *IndexStore {
 		store = &IndexStore{
 			indexes:    make(map[string]bleve.Index),
 			configs:    make(map[string]*models.IndexConfig),
+			indexLocks: make(map[string]*sync.RWMutex),
 			dataDir:    "./data",
 			configFile: "./data/configs.json",
 		}
 		store.loadConfigs()
 	})
 	return store
+}
+
+// getIndexLock returns the lock for a specific index, creating it if necessary
+func (s *IndexStore) getIndexLock(indexID string) *sync.RWMutex {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if lock, exists := s.indexLocks[indexID]; exists {
+		return lock
+	}
+
+	lock := &sync.RWMutex{}
+	s.indexLocks[indexID] = lock
+	return lock
 }
 
 // CreateIndex creates a new bleve index
@@ -92,6 +109,7 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 
 	s.indexes[config.ID] = index
 	s.configs[config.ID] = config
+	s.indexLocks[config.ID] = &sync.RWMutex{}
 	s.saveConfigs()
 
 	return nil
@@ -100,14 +118,14 @@ func (s *IndexStore) CreateIndex(config *models.IndexConfig) error {
 // GetIndex returns an index by ID
 func (s *IndexStore) GetIndex(id string) (bleve.Index, *models.IndexConfig, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	index, exists := s.indexes[id]
+	config := s.configs[id]
+	s.mu.RUnlock()
+
 	if !exists {
 		return nil, nil, fmt.Errorf("index %s not found", id)
 	}
 
-	config := s.configs[id]
 	return index, config, nil
 }
 
@@ -134,6 +152,7 @@ func (s *IndexStore) DeleteIndex(id string) error {
 
 	delete(s.indexes, id)
 	delete(s.configs, id)
+	delete(s.indexLocks, id)
 	s.saveConfigs()
 
 	return nil
@@ -210,6 +229,7 @@ func (s *IndexStore) loadConfigs() {
 				continue
 			}
 			s.indexes[id] = index
+			s.indexLocks[id] = &sync.RWMutex{}
 		} else {
 			// Index directory exists, try to open it
 			index, err := bleve.Open(indexPath)
@@ -223,6 +243,7 @@ func (s *IndexStore) loadConfigs() {
 				}
 			}
 			s.indexes[id] = index
+			s.indexLocks[id] = &sync.RWMutex{}
 		}
 	}
 }
@@ -293,6 +314,7 @@ func (s *IndexStore) CreateIndexInternal(config *models.IndexConfig) error {
 
 	s.indexes[config.ID] = index
 	s.configs[config.ID] = config
+	s.indexLocks[config.ID] = &sync.RWMutex{}
 	s.saveConfigs()
 
 	return nil
@@ -318,6 +340,7 @@ func (s *IndexStore) DeleteIndexInternal(id string) error {
 
 	delete(s.indexes, id)
 	delete(s.configs, id)
+	delete(s.indexLocks, id)
 	s.saveConfigs()
 
 	return nil
@@ -337,13 +360,20 @@ func (s *IndexStore) UpdateIndexInternal(id string, config *models.IndexConfig) 
 }
 
 // AddDocumentsInternal adds documents to an index without locking (called by FSM)
-func (s *IndexStore) AddDocumentsInternal(indexID string, documents []map[string]interface{}) error {
+func (s *IndexStore) AddDocumentsInternal(indexID string, documents []map[string]any) error {
+	s.mu.RLock()
 	index, exists := s.indexes[indexID]
+	config := s.configs[indexID]
+	s.mu.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("index %s not found", indexID)
 	}
 
-	config := s.configs[indexID]
+	indexLock := s.getIndexLock(indexID)
+	indexLock.Lock()
+	defer indexLock.Unlock()
+
 	batch := index.NewBatch()
 
 	for _, doc := range documents {
@@ -368,10 +398,17 @@ func (s *IndexStore) AddDocumentsInternal(indexID string, documents []map[string
 
 // DeleteDocumentInternal deletes a document without locking (called by FSM)
 func (s *IndexStore) DeleteDocumentInternal(indexID, documentID string) error {
+	s.mu.RLock()
 	index, exists := s.indexes[indexID]
+	s.mu.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("index %s not found", indexID)
 	}
+
+	indexLock := s.getIndexLock(indexID)
+	indexLock.Lock()
+	defer indexLock.Unlock()
 
 	if err := index.Delete(documentID); err != nil {
 		return fmt.Errorf("failed to delete document: %w", err)
@@ -382,10 +419,17 @@ func (s *IndexStore) DeleteDocumentInternal(indexID, documentID string) error {
 
 // DeleteDocumentsInternal deletes multiple documents without locking (called by FSM)
 func (s *IndexStore) DeleteDocumentsInternal(indexID, filter string, ids []string) error {
+	s.mu.RLock()
 	index, exists := s.indexes[indexID]
+	s.mu.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("index %s not found", indexID)
 	}
+
+	indexLock := s.getIndexLock(indexID)
+	indexLock.Lock()
+	defer indexLock.Unlock()
 
 	batch := index.NewBatch()
 
@@ -439,11 +483,18 @@ func (s *IndexStore) DeleteDocumentsInternal(indexID, filter string, ids []strin
 }
 
 // UpdateDocumentInternal updates a document without locking (called by FSM)
-func (s *IndexStore) UpdateDocumentInternal(indexID, documentID string, updates map[string]interface{}) error {
+func (s *IndexStore) UpdateDocumentInternal(indexID, documentID string, updates map[string]any) error {
+	s.mu.RLock()
 	index, exists := s.indexes[indexID]
+	s.mu.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("index %s not found", indexID)
 	}
+
+	indexLock := s.getIndexLock(indexID)
+	indexLock.Lock()
+	defer indexLock.Unlock()
 
 	// Get existing document by searching for it
 	query := bleve.NewDocIDQuery([]string{documentID})
@@ -455,7 +506,7 @@ func (s *IndexStore) UpdateDocumentInternal(indexID, documentID string, updates 
 	}
 
 	// Merge updates with existing document
-	existingData := make(map[string]interface{})
+	existingData := make(map[string]any)
 	if len(searchResult.Hits) > 0 {
 		for fieldName, fieldValue := range searchResult.Hits[0].Fields {
 			existingData[fieldName] = fieldValue
@@ -476,7 +527,7 @@ func (s *IndexStore) UpdateDocumentInternal(indexID, documentID string, updates 
 
 // DetectPrimaryKey analyzes documents and returns the primary key attribute
 // Returns error if no candidates or multiple candidates are found
-func DetectPrimaryKey(documents []map[string]interface{}) (string, error) {
+func DetectPrimaryKey(documents []map[string]any) (string, error) {
 	if len(documents) == 0 {
 		return "", fmt.Errorf("cannot detect primary key from empty document set")
 	}

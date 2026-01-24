@@ -20,7 +20,7 @@ type SearchRequest struct {
 
 // SearchResponse represents a search response
 type SearchResponse struct {
-	Hits       []map[string]interface{} `json:"hits"`
-	TotalHits  uint64                   `json:"totalHits"`
-	TotalPages int                      `json:"totalPages"`
+	Hits       []map[string]any `json:"hits"`
+	TotalHits  uint64           `json:"totalHits"`
+	TotalPages int              `json:"totalPages"`
 }

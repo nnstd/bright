@@ -16,7 +16,7 @@ import (
 type zapHclogAdapter struct {
 	logger *zap.Logger
 	name   string
-	args   []interface{}
+	args   []any
 }
 
 // NewHclogAdapter creates an hclog.Logger that writes to a zap logger
@@ -24,12 +24,12 @@ func NewHclogAdapter(logger *zap.Logger, name string) hclog.Logger {
 	return &zapHclogAdapter{
 		logger: logger.Named(name),
 		name:   name,
-		args:   []interface{}{},
+		args:   []any{},
 	}
 }
 
 // Helper function to convert args to zap fields
-func (z *zapHclogAdapter) argsToFields(args []interface{}) []zap.Field {
+func (z *zapHclogAdapter) argsToFields(args []any) []zap.Field {
 	fields := make([]zap.Field, 0, len(args)/2)
 
 	// Combine instance args with call args
@@ -66,7 +66,7 @@ func (z *zapHclogAdapter) argsToFields(args []interface{}) []zap.Field {
 }
 
 // Log implements hclog.Logger
-func (z *zapHclogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Log(level hclog.Level, msg string, args ...any) {
 	fields := z.argsToFields(args)
 
 	switch level {
@@ -84,27 +84,27 @@ func (z *zapHclogAdapter) Log(level hclog.Level, msg string, args ...interface{}
 }
 
 // Trace implements hclog.Logger
-func (z *zapHclogAdapter) Trace(msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Trace(msg string, args ...any) {
 	z.logger.Debug(msg, z.argsToFields(args)...)
 }
 
 // Debug implements hclog.Logger
-func (z *zapHclogAdapter) Debug(msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Debug(msg string, args ...any) {
 	z.logger.Debug(msg, z.argsToFields(args)...)
 }
 
 // Info implements hclog.Logger
-func (z *zapHclogAdapter) Info(msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Info(msg string, args ...any) {
 	z.logger.Info(msg, z.argsToFields(args)...)
 }
 
 // Warn implements hclog.Logger
-func (z *zapHclogAdapter) Warn(msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Warn(msg string, args ...any) {
 	z.logger.Warn(msg, z.argsToFields(args)...)
 }
 
 // Error implements hclog.Logger
-func (z *zapHclogAdapter) Error(msg string, args ...interface{}) {
+func (z *zapHclogAdapter) Error(msg string, args ...any) {
 	z.logger.Error(msg, z.argsToFields(args)...)
 }
 
@@ -134,12 +134,12 @@ func (z *zapHclogAdapter) IsError() bool {
 }
 
 // ImpliedArgs implements hclog.Logger
-func (z *zapHclogAdapter) ImpliedArgs() []interface{} {
+func (z *zapHclogAdapter) ImpliedArgs() []any {
 	return z.args
 }
 
 // With implements hclog.Logger
-func (z *zapHclogAdapter) With(args ...interface{}) hclog.Logger {
+func (z *zapHclogAdapter) With(args ...any) hclog.Logger {
 	return &zapHclogAdapter{
 		logger: z.logger,
 		name:   z.name,
@@ -179,7 +179,7 @@ func (z *zapHclogAdapter) ResetNamed(name string) hclog.Logger {
 	return &zapHclogAdapter{
 		logger: baseLogger.Named(name),
 		name:   name,
-		args:   []interface{}{},
+		args:   []any{},
 	}
 }
 
@@ -225,7 +225,7 @@ func (w *zapWriter) Write(p []byte) (n int, err error) {
 
 // Helper methods for formatted logging
 
-func (z *zapHclogAdapter) format(msg string, args ...interface{}) string {
+func (z *zapHclogAdapter) format(msg string, args ...any) string {
 	if len(args) > 0 {
 		return fmt.Sprintf(msg, args...)
 	}

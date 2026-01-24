@@ -21,8 +21,8 @@ type Config struct {
 	DSN string `json:"dsn"` // PostgreSQL connection string
 
 	// Table settings
-	Schema  string `json:"schema"`  // Schema name (default: "public")
-	Table   string `json:"table"`   // Table name to sync
+	Schema  string   `json:"schema"`            // Schema name (default: "public")
+	Table   string   `json:"table"`             // Table name to sync
 	Columns []string `json:"columns,omitempty"` // Columns to sync (empty = all)
 
 	// Primary key settings
@@ -55,7 +55,7 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v interface{}
+	var v any
 	if err := sonic.Unmarshal(b, &v); err != nil {
 		return err
 	}

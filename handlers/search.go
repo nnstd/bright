@@ -143,9 +143,9 @@ func Search(c *fiber.Ctx) error {
 	}
 
 	// Process results
-	hits := make([]map[string]interface{}, 0, len(searchResult.Hits))
+	hits := make([]map[string]any, 0, len(searchResult.Hits))
 	for _, hit := range searchResult.Hits {
-		doc := make(map[string]interface{})
+		doc := make(map[string]any)
 
 		// Add all fields from the hit
 		for fieldName, fieldValue := range hit.Fields {
