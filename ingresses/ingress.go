@@ -79,7 +79,7 @@ type IngressInfo struct {
 	Type    string          `json:"type"`
 	Status  Status          `json:"status"`
 	Config  json.RawMessage `json:"config"`
-	Statistics   Statistics           `json:"stats"`
+	Statistics   Statistics           `json:"statistics"`
 }
 
 // ToInfo converts an Ingress to IngressInfo for API responses
