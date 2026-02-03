@@ -230,6 +230,7 @@ func startServer(cfg *config.Config, zapLogger *zap.Logger, indexStore *store.In
 		// Index management
 		indexes.Get("/", handlers.ListIndexes)
 		indexes.Post("/", handlers.CreateIndex)
+		indexes.Get("/:id", handlers.GetIndex)
 		indexes.Delete("/:id", handlers.DeleteIndex)
 		indexes.Patch("/:id", handlers.UpdateIndex)
 

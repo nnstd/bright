@@ -102,6 +102,19 @@ func CreateIndex(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(config)
 }
 
+// GetIndex handles GET /indexes/:id
+func GetIndex(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	s := store.GetStore()
+	_, config, err := s.GetIndex(id)
+	if err != nil {
+		return errors.NotFound(c, errors.ErrorCodeIndexNotFound, err.Error())
+	}
+
+	return c.JSON(config)
+}
+
 // DeleteIndex handles DELETE /indexes/:id
 func DeleteIndex(c *fiber.Ctx) error {
 	id := c.Params("id")
