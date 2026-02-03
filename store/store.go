@@ -295,21 +295,43 @@ func (s *IndexStore) CreateIndexInternal(config *models.IndexConfig) error {
 
 	indexPath := filepath.Join(s.dataDir, config.ID)
 
-	// Create index mapping
-	indexMapping := bleve.NewIndexMapping()
+	var index bleve.Index
+	var err error
 
-	// Apply exclude attributes if specified
-	if len(config.ExcludeAttributes) > 0 {
-		defaultMapping := indexMapping.DefaultMapping
-		for _, attr := range config.ExcludeAttributes {
-			disabledMapping := bleve.NewDocumentDisabledMapping()
-			defaultMapping.AddSubDocumentMapping(attr, disabledMapping)
+	// Check if index directory already exists on disk
+	if _, statErr := os.Stat(indexPath); statErr == nil {
+		// Directory exists, try to open existing index
+		index, err = bleve.Open(indexPath)
+		if err != nil {
+			// Failed to open, remove and recreate
+			os.RemoveAll(indexPath)
+			indexMapping := bleve.NewIndexMapping()
+			if len(config.ExcludeAttributes) > 0 {
+				defaultMapping := indexMapping.DefaultMapping
+				for _, attr := range config.ExcludeAttributes {
+					disabledMapping := bleve.NewDocumentDisabledMapping()
+					defaultMapping.AddSubDocumentMapping(attr, disabledMapping)
+				}
+			}
+			index, err = bleve.New(indexPath, indexMapping)
+			if err != nil {
+				return fmt.Errorf("failed to create index: %w", err)
+			}
 		}
-	}
-
-	index, err := bleve.New(indexPath, indexMapping)
-	if err != nil {
-		return fmt.Errorf("failed to create index: %w", err)
+	} else {
+		// Directory doesn't exist, create new index
+		indexMapping := bleve.NewIndexMapping()
+		if len(config.ExcludeAttributes) > 0 {
+			defaultMapping := indexMapping.DefaultMapping
+			for _, attr := range config.ExcludeAttributes {
+				disabledMapping := bleve.NewDocumentDisabledMapping()
+				defaultMapping.AddSubDocumentMapping(attr, disabledMapping)
+			}
+		}
+		index, err = bleve.New(indexPath, indexMapping)
+		if err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
 	}
 
 	s.indexes[config.ID] = index
